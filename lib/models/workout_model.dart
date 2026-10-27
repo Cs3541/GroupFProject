@@ -53,14 +53,14 @@ class Workout {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return null;
 
-    final newRef = _db.child('workouts/$userId').push();\
+    final newRef = _db.child('workouts/$userId').push();
 
     await newRef.set({
       'workoutType': workoutType,
       'duration': duration,
       'reps': 0,
       'weight': 0,
-      'isCompleted': false; 
+      'isCompleted': false
     });
 
     return newRef.key;
