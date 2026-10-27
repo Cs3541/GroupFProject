@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "569618774301",
+    "project_id": "fallguys-fitness-app",
+    "storage_bucket": "fallguys-fitness-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569618774301:android:bc941dff4d8fe8d148c9f4",
+        "android_client_info": {
+          "package_name": "com.example.fallguys_fitness_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAboJr2F2vyW5f_2jHu32c51gxezg39V7k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
