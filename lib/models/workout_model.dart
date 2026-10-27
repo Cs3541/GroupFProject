@@ -1,4 +1,5 @@
-import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Workout {
   String? id;
@@ -17,80 +18,65 @@ class Workout {
     this.isCompleted = false,
   });
 
-  static final _db = FireDatabase.instance.ref();
+  static final _firestore = FirebaseFirestore.instance;
   static final _auth = FirebaseAuth.instance;
+
+  // Helper to get the correct collection path
+  static CollectionReference _userWorkoutsRef(String userId) {
+    return _firestore.collection('users').doc(userId).collection('workouts');
+  }
 
   static Future<List<Workout>> fetchWorkout() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return [];
 
-    final snapshot = await _db.child('workouts/$userId').get();
-    final List<Workout> workouts = [];
+    final snapshot = await _userWorkoutsRef(userId).get();
 
-    if (snapshot.exists) {
-      final data = Map<String, dynamic>.from(snapshot.value as Map);
-
-      data.forEach((key, value) {
-        workouts.add(
-          Workout(
-            id: key,
-            workoutType: value['workoutType'],
-            duration: value['duration'],
-            reps: value['reps'],
-            weight: value['weight'],
-            isCompleted: value['completed'],
-          ),
-        );
-      });
-    }
-    return workouts;
+    return snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return Workout(
+        id: doc.id,
+        workoutType: data['workoutType'] ?? '',
+        duration: data['duration'] ?? 0,
+        reps: data['reps'],
+        weight: data['weight'],
+        isCompleted: data['isCompleted'] ?? false,
+      );
+    }).toList();
   }
 
-  static Future<String?> addWorkout(
-    String workoutType,
-    int duration,
-  ) async {
+  static Future<String?> addWorkout(String workoutType, int duration) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return null;
 
-    final newRef = _db.child('workouts/$userId').push();\
-
-    await newRef.set({
+    final newDocRef = await _userWorkoutsRef(userId).add({
       'workoutType': workoutType,
       'duration': duration,
       'reps': 0,
       'weight': 0,
-      'isCompleted': false; 
+      'isCompleted': false,
     });
 
-    return newRef.key;
+    return newDocRef.id;
   }
 
+  // Refactored to accept just the ID and the new status to decouple from UI state
   static Future<void> updateCompletionStatus(
-    int index,
-    List<Workout> currentWorkouts,
+    String workoutId,
+    bool isCurrentlyCompleted,
   ) async {
     final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
 
-    if (userId == null || index < 0 || index >= currentWorkouts.length) {
-      return;
-    }
+    final docRef = _userWorkoutsRef(userId).doc(workoutId);
 
-    final workout = currentWorkouts[index];
-    if (workout.id == null) return;
-
-    final ref = _db.child('workouts/$userId/${workout.id}');
-    final updatedStatus = !workout.isCompleted;
-
-    await ref.update({'isCompleted': updatedStatus});
+    await docRef.update({'isCompleted': !isCurrentlyCompleted});
   }
 
   static Future<void> deleteWorkout(String id) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return;
 
-    await _db.child('workouts/$userId/$id').remove();
+    await _userWorkoutsRef(userId).doc(id).delete();
   }
 }
-
-
