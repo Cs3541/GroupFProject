@@ -14,4 +14,7 @@ class AuthPresenter {
 
   Future<void> logout() => _model.signOut();
   Stream authStateChanges() => _model.authStateChanges();
+
+  String? getCurrentUserEmail() => _model.currentUser?.email;
 }
+//Duplicate code removed, making change to pull.
