@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'presenters/assignment_presenter.dart';
+import 'presenters/workout_presenter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,7 +9,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final AssignmentPresenter _presenter = AssignmentPresenter();
+  final WorkoutPresenter _presenter = WorkoutPresenter();
 
   bool _loading = true;
   bool _loadFailed = false;
@@ -18,12 +17,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAssignments();
+    _loadWorkouts();
   }
 
-  Future<void> _loadAssignments() async {
+  Future<void> _loadWorkouts() async {
     try {
-      await _presenter.loadAssignments();
+      await _presenter._loadWorkouts();
 
       if (!mounted) return;
 
@@ -43,11 +42,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final percent = _presenter.completionRatio;
-    final remaining = _presenter.totalAssignments -
-        _presenter.completedAssignments;
-    final unfinishedAssignments = _presenter.assignments
-      .where((assignment) => !assignment.isCompleted)
+    final remaining = _presenter.totalWorkouts -
+        _presenter.completedWorkouts;
+    final unfinishedWorkouts = _presenter.workouts
+      .where((workout) => !workout.isCompleted)
       .toList();
 
     return Scaffold(
