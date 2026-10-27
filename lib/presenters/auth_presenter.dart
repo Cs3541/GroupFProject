@@ -27,3 +27,4 @@ class AuthPresenter {
 
   String? getCurrentUserEmail() => _model.currentUser?.email;
 }
+//Duplicate code removed, making change to pull.
