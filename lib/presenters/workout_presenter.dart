@@ -1,8 +1,6 @@
 import '../models/workout_model.dart';
 
 class WorkoutPresenter {
-  
-
   final List<Workout> _workouts = [];
 
   List<Workout> get workouts => _workouts;
@@ -19,17 +17,25 @@ class WorkoutPresenter {
     final id = await Workout.addWorkout(workoutType, duration);
     if (id == null) return;
 
-    _workouts.add(Workout(
-      id: id,
-      workoutType: workoutType,
-      duration: duration,
-
-      ));
+    _workouts.add(
+      Workout(id: id, workoutType: workoutType, duration: duration),
+    );
   }
 
-  Future<void> toggleCompleted(int index) async {
-    await Workout.updateCompletionStatus(index, _workouts);
-    _workouts[index].isCompleted = !_workouts[index].isCompleted;
+  Future<void> toggleCompleted(String id) async {
+    // Finding the local workout by its firestore ID
+    final index = _workouts.indexWhere((workout) => workout.id == id);
+
+    //guard in case the ID isn't found in the local list
+    if (index == -1) return;
+
+    final currentStatus = _workouts[index].isCompleted;
+
+    //simple call to backend 
+    await Workout.updateCompletionStatus(id, currentStatus);
+
+    // Update local state to match the backend
+    _workouts[index].isCompleted = !currentStatus;
   }
 
   Future<void> deleteWorkout(int index) async {
