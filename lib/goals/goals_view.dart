@@ -1,4 +1,4 @@
-import '';
+import '../core/models/goal_model.dart';
 
 // view contract
 abstract class GoalsView {
