@@ -1,4 +1,4 @@
-import '../models/auth_model.dart';
+import '../core/models/auth_model.dart';
 
 class AuthPresenter {
   //AuthPresenter initial code, copied from the homework tracker.
