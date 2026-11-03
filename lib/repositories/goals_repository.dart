@@ -1,4 +1,4 @@
-import '../../models/goal_model.dart';
+import '../models/goal_model.dart';
 
 // could be any repository / database
 abstract class GoalsRepository {

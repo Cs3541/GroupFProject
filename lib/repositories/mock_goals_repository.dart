@@ -1,5 +1,5 @@
 import 'goals_repository.dart';
-import '../../models/goal_model.dart';
+import '../models/goal_model.dart';
 
 class MockGoalsRepository implements GoalsRepository {
   @override

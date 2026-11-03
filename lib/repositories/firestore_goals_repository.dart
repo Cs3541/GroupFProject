@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'goals_repository.dart';
-import '../../models/goal_model.dart';
+import '../models/goal_model.dart';
 
 class FirestoreGoalsRepository implements GoalsRepository {
   final _firestore = FirebaseFirestore.instance;

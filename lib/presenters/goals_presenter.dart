@@ -1,7 +1,7 @@
 import 'package:fallguys_fitness_app/models/goal_model.dart';
 
 import '../views/goals_view.dart';
-import '../repositories/goals/goals_repository.dart';
+import '../repositories/goals_repository.dart';
 
 class GoalsPresenter {
   final GoalsView _view;

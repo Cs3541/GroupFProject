@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../presenters/goals_presenter.dart';
 import '../views/goals_view.dart';
-import '../repositories/goals/goals_repository.dart';
-import '../repositories/goals/mock_goals_repository.dart';
+import '../repositories/goals_repository.dart';
+import '../repositories/mock_goals_repository.dart';
 import '../models/goal_model.dart';
 
 class GoalsScreen extends StatefulWidget {
