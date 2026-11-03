@@ -1,9 +1,18 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
+import 'screens/main_navigation_screen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint("Firebase init failed: $e");
+  }
+
   runApp(const FitByteApp());
 }
 
@@ -13,8 +22,9 @@ class FitByteApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FitByteApp Tracker',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      title: 'FitByte',
+      theme: AppTheme.lightTheme,
+      home: const MainNavigationScreen(),
     );
-  } // MaterialApp
+  }
 }
