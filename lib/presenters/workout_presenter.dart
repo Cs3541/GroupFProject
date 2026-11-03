@@ -1,4 +1,4 @@
-import '../core/models/workout_model.dart';
+import '../models/workout_model.dart';
 
 class WorkoutPresenter {
   final List<Workout> _workouts = [];

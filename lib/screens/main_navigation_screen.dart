@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'goals_screen.dart';
+import 'workout_routine_screen.dart';
 
 enum NavTab { home, goals, routines, profile }
 
@@ -21,7 +22,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case NavTab.goals:
         return const GoalsScreen(); // hooked to my vertical slice
       case NavTab.routines:
-        return const Center(child: Text('Routines Screen (WIP)'));
+        return const WorkoutRoutineScreen();
       case NavTab.profile:
         return const Center(child: Text('Profile Screen (WIP)'));
     }
