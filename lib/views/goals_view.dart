@@ -1,4 +1,4 @@
-import '';
+import '../models/goal_model.dart';
 
 // view contract
 abstract class GoalsView {
@@ -9,9 +9,8 @@ abstract class GoalsView {
   void displayMetricGoals(List<MetricGoal> goals);
 
   // for required "goal achievement section for things they did"
-  void displayAchivementGoals(List<HabitGoal> achievements);
+  void displayAchievementGoals(List<HabitGoal> achievements);
 
   void onGoalUpdated(String goalId);
   void showError(String message);
 }
-
