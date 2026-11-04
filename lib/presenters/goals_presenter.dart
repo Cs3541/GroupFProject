@@ -57,4 +57,61 @@ class GoalsPresenter {
       _view.showError("Network error: Failed to update goal.");
     }
   }
+
+  Future<void> addMetricGoal(
+    String title,
+    double targetValue,
+    String unit,
+  ) async {
+    _view.showLoading();
+    try {
+      final newId = await _repository.addMetricGoal(title, targetValue, unit);
+      _metricGoals.add(
+        MetricGoal(
+          id: newId,
+          title: title,
+          targetValue: targetValue,
+          currentValue: 0.0,
+          unit: unit,
+        ),
+      );
+      _view.displayMetricGoals(_metricGoals);
+    } catch (e) {
+      _view.showError("Failed to save distance goal.");
+    } finally {
+      _view.hideLoading();
+    }
+  }
+
+  Future<void> addHabitGoal(String title) async {
+    _view.showLoading();
+    try {
+      final newId = await _repository.addHabitGoal(title);
+      _habitGoals.add(HabitGoal(id: newId, title: title, isCompleted: false));
+      _view.displayAchievementGoals(_habitGoals);
+    } catch (e) {
+      _view.showError("Failed to save habit goal.");
+    } finally {
+      _view.hideLoading();
+    }
+  }
+
+  Future<void> deleteGoal(String id, {required bool isMetric}) async {
+    try {
+      if (isMetric) {
+        // Optimistic local update
+        _metricGoals.removeWhere((g) => g.id == id);
+        _view.displayMetricGoals(_metricGoals);
+        // Network call
+        await _repository.deleteMetricGoal(id);
+      } else {
+        _habitGoals.removeWhere((g) => g.id == id);
+        _view.displayAchievementGoals(_habitGoals);
+        await _repository.deleteHabitGoal(id);
+      }
+    } catch (e) {
+      _view.showError("Failed to delete goal. Please try again.");
+      loadGoals(); // Rollback by reloading from the source of truth
+    }
+  }
 }

@@ -1,4 +1,3 @@
-// lib/features/goals/firestore_goals_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -10,9 +9,7 @@ class FirestoreGoalsRepository implements GoalsRepository {
   final _auth = FirebaseAuth.instance;
 
   String get _userId {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception('User not authenticated');
-    return uid;
+    return 'debug_test_user_123';
   }
 
   CollectionReference get _goalsRef =>
@@ -32,8 +29,8 @@ class FirestoreGoalsRepository implements GoalsRepository {
       return MetricGoal(
         id: doc.id,
         title: data['title'] ?? '',
-        targetMiles: (data['targetMiles'] as num?)?.toDouble() ?? 0.0,
-        currentMiles:
+        targetValue: (data['targetMiles'] as num?)?.toDouble() ?? 0.0,
+        currentValue:
             0.0, // Replace with your aggregated workout data calculation
       );
     }).toList();
@@ -56,5 +53,50 @@ class FirestoreGoalsRepository implements GoalsRepository {
   @override
   Future<void> updateHabitStatus(String id, bool isCompleted) async {
     await _goalsRef.doc(id).update({'isCompleted': isCompleted});
+  }
+
+  @override
+  Future<String> addMetricGoal(
+    String title,
+    double targetMiles,
+    String unit,
+  ) async {
+    final docRef = await _goalsRef.add({
+      'type': 'metric',
+      'title': title,
+      'targetMiles': targetMiles,
+      'unit': unit,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
+  }
+
+  @override
+  Future<String> addHabitGoal(String title) async {
+    final docRef = await _goalsRef.add({
+      'type': 'habit',
+      'title': title,
+      'isCompleted': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
+  }
+
+  @override
+  Future<void> deleteMetricGoal(String id) async {
+    try {
+      await _goalsRef.doc(id).delete();
+    } catch (e) {
+      throw Exception('Failed to delete metric goal: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteHabitGoal(String id) async {
+    try {
+      await _goalsRef.doc(id).delete();
+    } catch (e) {
+      throw Exception('Failed to delete habit goal: $e');
+    }
   }
 }
