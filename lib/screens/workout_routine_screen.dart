@@ -126,26 +126,37 @@ void initState() {
       appBar: AppBar(
         title: const Text('Workout Routines'),
         actions: [
-          DropdownButton<String>(
-            value: _selectedWorkoutFilter,
-            onChanged: (value) {
-              setState(() {
-                _selectedWorkoutFilter = value;
-              });
-            },
-            items: [
-              const DropdownMenuItem<String>(
-                value: null,
-                child: Text('All'),
-              ),
-              ..._workoutGroups.map((group) {
-                return DropdownMenuItem<String>(
-                  value: group,
-                  child: Text(group),
-                );
-              }).toList(),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+              value: _selectedWorkoutFilter,
+              onChanged: (value) {
+                setState(() {
+                  _selectedWorkoutFilter = value;
+                });
+              },
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('All'),
+                ),
+                ..._workoutGroups.map((group) {
+                  return DropdownMenuItem<String>(
+                    value: group,
+                    child: Text(group),
+                  );
+                }).toList(),
+              ],
+            ),
           ),
+        ),
+
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => _showAddWorkoutDialog(),
