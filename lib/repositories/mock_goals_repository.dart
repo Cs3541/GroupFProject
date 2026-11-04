@@ -9,14 +9,14 @@ class MockGoalsRepository implements GoalsRepository {
       MetricGoal(
         id: 'm1',
         title: 'Run 15 miles per week',
-        targetMiles: 15.0,
-        currentMiles: 8.5,
+        targetValue: 15.0,
+        currentValue: 8.5,
       ),
       MetricGoal(
         id: 'm2',
         title: 'Cycle 50 miles per week',
-        targetMiles: 50.0,
-        currentMiles: 50.0,
+        targetValue: 50.0,
+        currentValue: 50.0,
       ),
     ];
   }
@@ -43,4 +43,27 @@ class MockGoalsRepository implements GoalsRepository {
     await Future.delayed(const Duration(milliseconds: 500));
     // In a mock, you just return success. The Presenter handles the local state update.
   }
+
+  @override
+  Future<String> addMetricGoal(String title, double targetMiles, String unit) async {
+    await Future.delayed(
+      const Duration(milliseconds: 500),
+    ); // Simulate network delay
+    // Generate a fake unique ID
+    return 'mock_metric_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  @override
+  Future<String> addHabitGoal(String title) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return 'mock_habit_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  @override
+  Future<void> deleteMetricGoal(String id) async =>
+      await Future.delayed(const Duration(milliseconds: 500));
+
+  @override
+  Future<void> deleteHabitGoal(String id) async =>
+      await Future.delayed(const Duration(milliseconds: 500));
 }

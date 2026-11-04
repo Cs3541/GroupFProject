@@ -11,18 +11,20 @@ class MetricGoal implements Goal {
   @override
   final String title;
 
-  final double targetMiles;
-  final double currentMiles;
+  final double targetValue;
+  final double currentValue;
+  final String unit;
 
   MetricGoal({
     required this.id,
     required this.title,
-    required this.targetMiles,
-    this.currentMiles = 0.0,
+    required this.targetValue,
+    required this.currentValue,
+    this.unit = '',
   });
 
   @override
-  bool get isCompleted => currentMiles >= targetMiles;
+  bool get isCompleted => currentValue >= targetValue;
 }
 
 class HabitGoal implements Goal {
