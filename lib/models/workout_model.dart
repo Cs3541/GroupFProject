@@ -5,17 +5,34 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Exercise {
   String name;
   bool isCompleted;
-
+  // How long this exercise should take, in seconds. Null means no timer.
+  int? durationSeconds;
 
   Exercise({
     required this.name,
     this.isCompleted = false,
-
+    this.durationSeconds,
   });
+
+  // Builds an Exercise from text like "Pushups:60" (60 second timer) or "Plank" (no timer).
+  factory Exercise.fromInput(String input) {
+    final entry = input.trim();
+    final colon = entry.lastIndexOf(':');
+    if (colon != -1) {
+      final name = entry.substring(0, colon).trim();
+      final seconds = int.tryParse(entry.substring(colon + 1).trim());
+      if (name.isNotEmpty && seconds != null && seconds > 0) {
+        return Exercise(name: name, durationSeconds: seconds);
+      }
+    }
+    return Exercise(name: entry);
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'isCompleted': isCompleted,
+      'durationSeconds': durationSeconds,
     };
   }
 }
@@ -69,6 +86,8 @@ class Workout {
         return Exercise(
           name: exerciseMap['name'] ?? '',
           isCompleted: exerciseMap['isCompleted'] ?? false,
+          // older saved exercises won't have this field, so it stays null
+          durationSeconds: (exerciseMap['durationSeconds'] as num?)?.toInt(),
         );
       }).toList();
 
@@ -94,9 +113,10 @@ class Workout {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return null;
 
+    // each name can include a timer, e.g. "Pushups:60"
     final exercises = exerciseNames
-        .where((name) => name.isNotEmpty)
-        .map((name) => Exercise(name: name.trim()).toMap())
+        .where((name) => name.trim().isNotEmpty)
+        .map((name) => Exercise.fromInput(name).toMap())
         .toList();
 
     final newDocRef = await _userWorkoutsRef(userId).add({

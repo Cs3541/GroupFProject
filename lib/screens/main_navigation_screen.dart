@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'goals_screen.dart';
-import 'workout_routine_screen.dart';
+import '../views/workout_routine_screen.dart';
 
 enum NavTab { home, goals, routines, profile }
 
