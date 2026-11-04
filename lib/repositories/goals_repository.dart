@@ -5,9 +5,6 @@ abstract class GoalsRepository {
   Future<List<MetricGoal>> fetchMetricGoals();
   Future<List<HabitGoal>> fetchHabitGoals();
   Future<void> updateHabitStatus(String id, bool isCompleted);
-
-  Future<String> addMetricGoal(String title, double targetMiles);
-  Future<String> addHabitGoal(String title);
 }
 
 // concrete implementation exists at firestore_goals_repository.dart
