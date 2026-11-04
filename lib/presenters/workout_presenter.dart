@@ -64,10 +64,12 @@ class WorkoutPresenter {
 
   Future<void> loadWorkoutRoutines() async {
     final fetched = await Workout.fetchWorkout();
+    final samples = await Workout.fetchSampleWorkouts();
 
     _workouts
       ..clear()
-      ..addAll(fetched);
+      ..addAll(fetched)
+      ..addAll(samples);
   }
 // edited this section to include workout groups and exercises
   Future<void> addWorkout(String workoutType, int duration, {String? workoutGroup, List<String> exerciseNames = const []}) async {
