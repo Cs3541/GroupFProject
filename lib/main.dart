@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
-import 'screens/main_navigation_screen.dart';
+import 'views/main_navigation_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
