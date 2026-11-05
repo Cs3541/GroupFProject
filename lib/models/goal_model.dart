@@ -1,17 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-//
-// ---------- Models ---------
-//
+// #########################
+// -------- Models ---------
+// #########################
 
-// ##### Pure Models for goals #####
+// -- Pure Models for goals --
+
+// Goal model contract
 abstract class Goal {
   String get id;
   String get title;
   bool get isCompleted;
 }
 
+// Concrete Metric goal implementation
+// e.g. run 10 miles, benchpress 200 pounds
 class MetricGoal implements Goal {
   @override
   final String id;
@@ -34,6 +38,8 @@ class MetricGoal implements Goal {
   bool get isCompleted => currentValue >= targetValue;
 }
 
+// Concrete Habit goal implementation
+// e.g. Run once a week, Walk 10,000 steps a day
 class HabitGoal implements Goal {
   @override
   final String id;
@@ -45,11 +51,11 @@ class HabitGoal implements Goal {
   HabitGoal({required this.id, required this.title, this.isCompleted = false});
 }
 
-//
-// -------------- Repositories -----------------
-//
+// #####################################
+// ---------- Repositories -------------
+// #####################################
 
-// #### Abstract Repository contract ####
+// --- Abstract Repository contract ---
 abstract class GoalsRepository {
   Future<List<MetricGoal>> fetchMetricGoals();
   Future<List<HabitGoal>> fetchHabitGoals();
@@ -62,7 +68,8 @@ abstract class GoalsRepository {
   Future<void> deleteHabitGoal(String id);
 }
 
-// #### Concrete Repository for Firebase ####
+// Concrete Firebase repository
+// Handles ALL database logic to add / remove / update / fetch goals to the firestore database.
 class FirestoreGoalsRepository implements GoalsRepository {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
@@ -84,7 +91,7 @@ class FirestoreGoalsRepository implements GoalsRepository {
     final snapshot = await _goalsRef.where('type', isEqualTo: 'metric').get();
 
     // 2. Aggregate actual distance from the workouts collection
-    // (You will need to write a query here that sums up the miles from the past 7 days)
+    // TODO: write a query here that sums up the miles from the past 7 days
     // double recentMilesRan = await _calculateWeeklyMilesFromWorkouts();
 
     return snapshot.docs.map((doc) {
@@ -94,7 +101,7 @@ class FirestoreGoalsRepository implements GoalsRepository {
         title: data['title'] ?? '',
         targetValue: (data['targetMiles'] as num?)?.toDouble() ?? 0.0,
         currentValue:
-            0.0, // Replace with your aggregated workout data calculation
+            0.0, // TODO: Replace with aggregated workout data calculation
       );
     }).toList();
   }
@@ -164,7 +171,8 @@ class FirestoreGoalsRepository implements GoalsRepository {
   }
 }
 
-// #### Mock Repository for testing purposes #### 
+// --- Mock Repository ---
+// Lets the app test goals without direct connection to the actual firestore database
 class MockGoalsRepository implements GoalsRepository {
   @override
   Future<List<MetricGoal>> fetchMetricGoals() async {
@@ -209,7 +217,11 @@ class MockGoalsRepository implements GoalsRepository {
   }
 
   @override
-  Future<String> addMetricGoal(String title, double targetMiles, String unit) async {
+  Future<String> addMetricGoal(
+    String title,
+    double targetMiles,
+    String unit,
+  ) async {
     await Future.delayed(
       const Duration(milliseconds: 500),
     ); // Simulate network delay

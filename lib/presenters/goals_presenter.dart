@@ -2,6 +2,7 @@ import 'package:fallguys_fitness_app/models/goal_model.dart';
 
 import '../views/goals_view.dart';
 
+// Processes the request, talks to the Model to fetch or update data if needed, and applies business rules
 class GoalsPresenter {
   final GoalsView _view;
   final GoalsRepository _repository;

@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../presenters/goals_presenter.dart';
 import '../models/goal_model.dart';
 
-// view contract
+
+// ###################################
+// ----- Abstract View Contract ------
+// ###################################
 abstract class GoalsView {
   void showLoading();
   void hideLoading();
@@ -17,6 +20,10 @@ abstract class GoalsView {
   void onGoalUpdated(String goalId);
   void showError(String message);
 }
+
+// ####################################
+// ------ Concrete Goals Screen -------
+// ####################################
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
