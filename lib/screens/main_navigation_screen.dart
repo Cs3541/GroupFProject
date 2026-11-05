@@ -1,9 +1,13 @@
+import 'package:fallguys_fitness_app/screens/profile_screen.dart';
+import 'package:fallguys_fitness_app/screens/signup_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'goals_screen.dart';
 import 'workout_routine_screen.dart';
+import '../screens/signup_screen.dart';
+import 'profile_screen.dart';
 
-enum NavTab { home, goals, routines, profile }
+enum NavTab { home, goals, routines, profile, signupScreen }
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -13,10 +17,12 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  NavTab _selectedTab = NavTab.home;
+  NavTab _selectedTab = NavTab.signupScreen;
 
   Widget _getScreen(NavTab tab) {
     switch (tab) {
+      case NavTab.signupScreen:
+        return const SignupScreen();
       case NavTab.home:
         return const Center(child: Text('Home Screen (WIP)'));
       case NavTab.goals:
@@ -24,7 +30,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case NavTab.routines:
         return const WorkoutRoutineScreen();
       case NavTab.profile:
-        return const Center(child: Text('Profile Screen (WIP)'));
+        return ProfileScreen();
     }
   }
 
