@@ -1,4 +1,5 @@
 import '../models/auth_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthPresenter {
   final AuthModel _model = AuthModel();
@@ -11,7 +12,7 @@ class AuthPresenter {
   }
   Future<void> logout() => _model.signOut();
 
-  Stream authStateChanges() => _model.authStateChanges();
+  Stream<User?> authStateChanges() => _model.authStateChanges();
 
   String? getCurrentUserEmail() => _model.currentUser?.email;
 }

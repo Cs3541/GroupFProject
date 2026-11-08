@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../presenters/auth_presenter.dart';
-import '../views/main_navigation_view.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,21 +16,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _errorMessage;
 
-  void _handleLogin() async {
-    final error = await _presenter.login(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+  Future<void> _handleLogin() async {
+  final error = await _presenter.login(
+    _emailController.text.trim(),
+    _passwordController.text,
+  );
 
-    if (error != null) {
-      setState(() => _errorMessage = error);
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-      );
-    }
-  }
+  if (!mounted) return;
+
+  setState(() {
+    _errorMessage = error;
+  });
+}
 
   @override
   Widget build(BuildContext context) {

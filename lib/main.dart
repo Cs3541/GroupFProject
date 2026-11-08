@@ -1,8 +1,10 @@
+import 'package:fallguys_fitness_app/screens/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 import 'views/main_navigation_view.dart';
+import '../views/auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +26,7 @@ class FitByteApp extends StatelessWidget {
     return MaterialApp(
       title: 'FitByte',
       theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+      home: const AuthGate(),
     );
   }
 }

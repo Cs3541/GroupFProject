@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 import '../presenters/auth_presenter.dart';
-import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final AuthPresenter _presenter = AuthPresenter();
 
   ProfileScreen({super.key});
 
-  void _logout(BuildContext context) async {
+  Future<void> _logout(BuildContext context) async {
     await _presenter.logout();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
   }
 
   @override
