@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'goals_view.dart';
 import '../screens/workout_routine_screen.dart';
+import '../screens/profile_screen.dart';
 
-enum NavTab { home, goals, routines, profile }
+enum NavTab { home, goals, routines, profile}
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -24,7 +25,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case NavTab.routines:
         return const WorkoutRoutineScreen();
       case NavTab.profile:
-        return const Center(child: Text('Profile Screen (WIP)'));
+        return ProfileScreen();
     }
   }
 
