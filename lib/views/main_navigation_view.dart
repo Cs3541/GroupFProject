@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'goals_view.dart';
 import '../screens/workout_routine_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/home_screen.dart';
 
 enum NavTab { home, goals, routines, profile}
 
@@ -19,9 +20,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget _getScreen(NavTab tab) {
     switch (tab) {
       case NavTab.home:
-        return const Center(child: Text('Home Screen (WIP)'));
+        return const HomeScreen(); // Code will be: return const HomeScreen();
       case NavTab.goals:
-        return const GoalsScreen(); // hooked to my vertical slice
+        return const GoalsScreen(); // hooked to my vertical slice ?
       case NavTab.routines:
         return const WorkoutRoutineScreen();
       case NavTab.profile:
@@ -35,7 +36,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     });
   }
 
-  @override
+
+// Build function renders each tab at the bottom of the screen(parameters are icon and label)
+  @override 
   Widget build(BuildContext context) {
     return Scaffold(
       body: _getScreen(_selectedTab),
@@ -43,7 +46,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         currentIndex: _selectedTab.index,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+             label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.track_changes),
             label: 'Goals',
@@ -52,7 +57,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.fitness_center),
             label: 'Routines',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile'),
         ],
       ),
     );
