@@ -17,10 +17,13 @@ class CalenderPresenter {
   // Varibale Declarations after constructor
   late DateTime _today;
   late DateTime _selectedDay;
+  int _pageOffset = 0;
 
 
   DateTime get today => _today;
   DateTime get selectedDay => _selectedDay;
+  int get pageOffset => _pageOffset;
+  bool get isShowingToday => _pageOffset == 0;
   
 
   List<DateTime> daysForPage(int offset){
@@ -31,7 +34,7 @@ class CalenderPresenter {
     );
   }
 
-  List<DateTime> get visibleDays => daysForPage(0);
+  List<DateTime> get visibleDays => daysForPage(_pageOffset);
 
 
   String rangeLabelForPage(int offset){
@@ -49,7 +52,7 @@ class CalenderPresenter {
   }
 
 
-  String get rangeLabel => rangeLabelForPage(0);
+  String get rangeLabel => rangeLabelForPage(_pageOffset);
 
 
   String get selectedDayLabel {
@@ -66,8 +69,8 @@ class CalenderPresenter {
   void selectDay(DateTime day) => _selectedDay = dateOnly(day);
 
   void changePage(int newOffset){
-    if(newOffset == 0) return;
-    0 == newOffset;
+    if(newOffset == _pageOffset) return;
+    _pageOffset = newOffset;
     _selectedDay = daysForPage(newOffset)[daysEachSide];
   }
   //Which page a given date falls on to later display
