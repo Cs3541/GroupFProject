@@ -56,10 +56,16 @@ class _AuthGateState extends State<AuthGate> {
             },
           );
         }
-
-        return MainNavigationScreen(
-          key: ValueKey(user.uid),
+        if (onboardingStatus == true) {
+          return MainNavigationScreen(
+            key: ValueKey(user.uid),
+          ); 
+        }
+        if (onboardingStatus == false) {
+          return MainNavigationScreen(
+            key: ValueKey(user.uid),
         );
+      }
       },
     );
   }
