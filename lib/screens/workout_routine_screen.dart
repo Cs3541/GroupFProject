@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../presenters/workout_presenter.dart';
+// only the library search widget; both files have a WorkoutRoutineScreen class
+import '../views/workout_routine_screen.dart' show ExerciseLibrarySearch;
 
 
 class WorkoutRoutineScreen extends StatefulWidget {
@@ -163,7 +165,11 @@ void initState() {
           ),
         ],
       ),
-      body:
+      body: Column(
+        children: [
+          const ExerciseLibrarySearch(),
+          Expanded(
+            child:
       _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
@@ -230,6 +236,9 @@ void initState() {
                 );
               },
           ),
+          ),
+        ],
+      ),
         );
   }
 }
