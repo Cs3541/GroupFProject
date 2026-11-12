@@ -1,4 +1,4 @@
-class CalenderPresenter {
+class CalendarPresenter {
 
   //I want to replicate a 7 day week thats viewable with the selected day in the middle
   // and the 3 previous days to the left of it and the 3 following days to the right of it
@@ -10,7 +10,7 @@ class CalenderPresenter {
   ];
   static const _weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-  CalenderPresenter({DateTime? now}){
+  CalendarPresenter({DateTime? now}){
     _today = dateOnly(now ?? DateTime.now());
     _selectedDay = _today;
   }
@@ -73,11 +73,26 @@ class CalenderPresenter {
     _pageOffset = newOffset;
     _selectedDay = daysForPage(newOffset)[daysEachSide];
   }
+
+  void goToToday({DateTime? now}) {
+    _today = dateOnly(now ?? DateTime.now());
+    _pageOffset = 0;
+    _selectedDay = _today;
+  }
+
   //Which page a given date falls on to later display
   int pageForDate(DateTime date){
     final days = daysBetween(_today, date);
     return((days + daysEachSide)/ daysPerPage).floor();
   }
+
+  void jumpToDate(DateTime date) {
+    _pageOffset = pageForDate(date);
+    _selectedDay = dateOnly(date);
+  }
+
+  DateTime get firstPickableDate => DateTime(_today.year - 10);
+  DateTime get lastPickableDate => DateTime(_today.year + 10, 12, 31);
 
   static int daysBetween(DateTime from, DateTime to) {
     final a = DateTime.utc(from.year, from.month, from.day);
