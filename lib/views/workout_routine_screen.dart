@@ -371,3 +371,222 @@ void dispose() {
   }
 }
 
+// ---------------- exercise library search ----------------
+// Search bar that opens a dropdown of the exercise library. Used by screens/workout_routine_screen.dart.
+class ExerciseLibrarySearch extends StatefulWidget {
+  const ExerciseLibrarySearch({super.key});
+
+  @override
+  State<ExerciseLibrarySearch> createState() => _ExerciseLibrarySearchState();
+}
+
+class _ExerciseLibrarySearchState extends State<ExerciseLibrarySearch> {
+  // static so the library is only read from Firestore once per app session
+  static Future<List<LibraryExercise>>? _libraryFuture;
+
+  final SearchController _searchController = SearchController();
+
+  // Selected primary muscle; null means all muscles. A ValueNotifier so the open dropdown
+  // updates immediately (SearchAnchor only refreshes on its own when the text changes).
+  final ValueNotifier<String?> _muscleFilter = ValueNotifier<String?>(null);
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _muscleFilter.dispose();
+    super.dispose();
+  }
+
+  Future<List<LibraryExercise>> _loadLibrary() {
+    return _libraryFuture ??= LibraryExercise.fetchLibrary().catchError((Object error) {
+      _libraryFuture = null; // allow a retry next time
+      throw error;
+    });
+  }
+
+  // Builds the dropdown contents: muscle filter chips on top, matching exercises below.
+  Widget _buildDropdown(Iterable<Widget> _) {
+    return FutureBuilder<List<LibraryExercise>>(
+      future: _loadLibrary(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Align(
+            alignment: Alignment.topCenter,
+            child: ListTile(
+              leading: Icon(Icons.error_outline),
+              title: Text('Could not load the exercise library.'),
+              subtitle: Text('Close and reopen the search to try again.'),
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final library = snapshot.data!;
+        final muscles = {for (final exercise in library) ...exercise.primaryMuscles}.toList()..sort();
+
+        return ListenableBuilder(
+          listenable: Listenable.merge([_searchController, _muscleFilter]),
+          builder: (context, _) {
+            final muscle = _muscleFilter.value;
+            final matches = library
+                .where((exercise) =>
+                    (muscle == null || exercise.primaryMuscles.contains(muscle)) &&
+                    exercise.matches(_searchController.text))
+                .toList();
+
+            return Column(
+              children: [
+                _buildMuscleChips(muscles, muscle),
+                const Divider(height: 1),
+                Expanded(
+                  child: matches.isEmpty
+                      ? const Align(
+                          alignment: Alignment.topCenter,
+                          child: ListTile(title: Text('No exercises found')),
+                        )
+                      : ListView.builder(
+                          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+                          itemCount: matches.length,
+                          itemBuilder: (context, index) => _buildExerciseTile(matches[index]),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Horizontal row of chips: "All muscles" plus every primary muscle found in the library.
+  Widget _buildMuscleChips(List<String> muscles, String? selected) {
+    return SizedBox(
+      height: 56,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        children: [
+          ChoiceChip(
+            label: const Text('All muscles'),
+            selected: selected == null,
+            onSelected: (_) => _muscleFilter.value = null,
+          ),
+          for (final muscle in muscles)
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: ChoiceChip(
+                label: Text(muscle),
+                selected: selected == muscle,
+                // tapping the selected chip again clears the filter
+                onSelected: (isSelected) => _muscleFilter.value = isSelected ? muscle : null,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseTile(LibraryExercise exercise) {
+    final details = [
+      if (exercise.primaryMuscles.isNotEmpty) exercise.primaryMuscles.first,
+      if (exercise.equipment != null) exercise.equipment!,
+    ];
+    return ListTile(
+      title: Text(exercise.name),
+      subtitle: details.isEmpty ? null : Text(details.join(' · ')),
+      onTap: () => _openExercise(exercise),
+    );
+  }
+
+  void _openExercise(LibraryExercise exercise) {
+    _searchController.closeView(_searchController.text);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => ExerciseDetailScreen(exercise: exercise),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 0),
+      // rebuilds the bar's hint so an active muscle filter is visible while the dropdown is closed
+      child: ValueListenableBuilder<String?>(
+        valueListenable: _muscleFilter,
+        builder: (context, muscle, _) => SearchAnchor.bar(
+          searchController: _searchController,
+          barHintText: muscle == null ? 'Search exercise library' : 'Search $muscle exercises',
+          isFullScreen: false, // dropdown under the bar instead of a full-screen page
+          viewBuilder: _buildDropdown,
+          // the list is built in _buildDropdown, which also reacts to the muscle filter
+          suggestionsBuilder: (context, controller) => const <Widget>[],
+        ),
+      ),
+    );
+  }
+}
+
+// Full-screen page showing one library exercise: images, info and instructions.
+class ExerciseDetailScreen extends StatelessWidget {
+  final LibraryExercise exercise;
+
+  const ExerciseDetailScreen({super.key, required this.exercise});
+
+  @override
+  Widget build(BuildContext context) {
+    final info = [
+      ...exercise.primaryMuscles,
+      if (exercise.equipment != null) exercise.equipment!,
+      if (exercise.level != null) exercise.level!,
+      if (exercise.category != null) exercise.category!,
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: Text(exercise.name)),
+      body: ListView(
+        // extra bottom space so the system navigation bar doesn't cover the last instruction
+        padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0 + MediaQuery.paddingOf(context).bottom),
+        children: [
+          ...exercise.images.map((url) => Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) => progress == null
+                        ? child
+                        : const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                    errorBuilder: (context, error, stackTrace) => const SizedBox(
+                      height: 100,
+                      child: Center(child: Icon(Icons.broken_image, size: 48)),
+                    ),
+                  ),
+                ),
+              )),
+          if (info.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: info.map((item) => Chip(label: Text(item))).toList(),
+            ),
+          const SizedBox(height: 16),
+          const Text('Instructions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          if (exercise.instructions.isEmpty) const Text('No instructions available.'),
+          ...exercise.instructions.asMap().entries.map((entry) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(child: Text('${entry.key + 1}')),
+                title: Text(entry.value),
+              )),
+        ],
+      ),
+    );
+  }
+}
+// end exercise library search
+

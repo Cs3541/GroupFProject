@@ -195,3 +195,89 @@ class Workout {
     await _userWorkoutsRef(userId).doc(id).delete();
   }
 }
+
+// ---------------- exercise library ----------------
+// An exercise from the shared 'exercises' collection (the library),
+// not to be confused with Exercise above, which is one entry inside a routine.
+class LibraryExercise {
+  final String id;
+  final String name;
+  final String nameLower;
+  final List<String> searchTokens;
+  final List<String> images;
+  final List<String> instructions;
+  final List<String> primaryMuscles;
+  final String? equipment;
+  final String? level;
+  final String? category;
+
+  LibraryExercise({
+    required this.id,
+    required this.name,
+    required this.nameLower,
+    this.searchTokens = const [],
+    this.images = const [],
+    this.instructions = const [],
+    this.primaryMuscles = const [],
+    this.equipment,
+    this.level,
+    this.category,
+  });
+
+  static final _firestore = FirebaseFirestore.instance;
+
+  // Some library documents have missing fields or empty arrays, so every field has a safe default.
+  factory LibraryExercise.fromFirestore(DocumentSnapshot doc) {
+    final data = (doc.data() as Map<String, dynamic>?) ?? {};
+    final name = (data['name'] as String?) ?? doc.id.replaceAll('_', ' ');
+
+    return LibraryExercise(
+      id: doc.id,
+      name: name,
+      nameLower: (data['nameLower'] as String?) ?? name.toLowerCase(),
+      searchTokens: _stringList(data['searchTokens']),
+      images: _stringList(data['images']),
+      instructions: _stringList(data['instructions']),
+      primaryMuscles: _stringList(data['primaryMuscles']),
+      equipment: data['equipment'] as String?,
+      level: data['level'] as String?,
+      category: data['category'] as String?,
+    );
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value is! List) return [];
+    return value.map((item) => item.toString()).toList();
+  }
+
+  // Reads the whole library collection, sorted alphabetically by name.
+  static Future<List<LibraryExercise>> fetchLibrary() async {
+    final snapshot = await _firestore.collection('exercises').get();
+    final library = snapshot.docs.map(LibraryExercise.fromFirestore).toList();
+    library.sort((a, b) => a.nameLower.compareTo(b.nameLower));
+    return library;
+  }
+
+  // Splits text the same way the search tokens were made: lowercase, broken on anything
+  // that isn't a letter or digit. "3/4 Sit-Up" -> [3, 4, sit, up]
+  static List<String> _words(String text) {
+    return text
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+  }
+
+  // True when every typed word matches a search token, or (because the tokens aren't
+  // exhaustive) is the start of a word in the name. An empty query matches everything.
+  bool matches(String query) {
+    final typedWords = _words(query);
+    if (typedWords.isEmpty) return true;
+
+    final nameWords = _words(nameLower);
+    return typedWords.every((typed) =>
+        searchTokens.contains(typed) ||
+        nameWords.any((word) => word.startsWith(typed)));
+  }
+}
+// end exercise library
