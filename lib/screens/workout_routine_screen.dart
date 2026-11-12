@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../presenters/workout_presenter.dart';
 // only the library search widget; both files have a WorkoutRoutineScreen class
-import '../views/workout_routine_screen.dart' show ExerciseLibrarySearch;
+import '../views/workout_routine_view.dart' show ExerciseLibrarySearch;
 
 
 class WorkoutRoutineScreen extends StatefulWidget {
