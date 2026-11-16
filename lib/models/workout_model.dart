@@ -4,15 +4,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // this is some new items that have been added to show individual excersizes within the workout. 
 class Exercise {
   String name;
-  bool isCompleted;
+  String? libraryExerciseId;
+  int sets;
+  List<bool> completedSets;
+  int? weight;
   // How long this exercise should take, in seconds. Null means no timer.
+  bool isCompleted;
   int? durationSeconds;
 
   Exercise({
     required this.name,
+    this.libraryExerciseId,
+    this.sets = 3,
+    List<bool>? completedSets,
+    this.weight,
     this.isCompleted = false,
     this.durationSeconds,
-  });
+  }): completedSets = completedSets ?? List.filled(sets, false);
 
   // Builds an Exercise from text like "Pushups:60" (60 second timer) or "Plank" (no timer).
   factory Exercise.fromInput(String input) {
@@ -31,6 +39,10 @@ class Exercise {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'libraryExerciseId': libraryExerciseId,
+      'sets': sets,
+      'completedSets': completedSets,
+      'weight': weight,
       'isCompleted': isCompleted,
       'durationSeconds': durationSeconds,
     };
@@ -85,6 +97,12 @@ class Workout {
 
         return Exercise(
           name: exerciseMap['name'] ?? '',
+          libraryExerciseId: exerciseMap['libraryExerciseId'],
+          sets: exerciseMap['sets'] ?? 3,
+          completedSets: exerciseMap['completedSets'] == null
+              ? null
+              : List<bool>.from(exerciseMap['completedSets'] ?? false),
+              weight: exerciseMap['weight'],
           isCompleted: exerciseMap['isCompleted'] ?? false,
           // older saved exercises won't have this field, so it stays null
           durationSeconds: (exerciseMap['durationSeconds'] as num?)?.toInt(),
@@ -109,15 +127,9 @@ class Workout {
     }).toList();
   }
 // edited to add workout groups and exercise names. 
-  static Future<String?> addWorkout(String workoutType, int duration, {String? workoutGroup, List<String> exerciseNames = const[],}) async {
+  static Future<String?> addWorkout(String workoutType, int duration, {String? workoutGroup, List<Exercise> exercises = const [],}) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return null;
-
-    // each name can include a timer, e.g. "Pushups:60"
-    final exercises = exerciseNames
-        .where((name) => name.trim().isNotEmpty)
-        .map((name) => Exercise.fromInput(name).toMap())
-        .toList();
 
     final newDocRef = await _userWorkoutsRef(userId).add({
       'workoutType': workoutType,
@@ -126,7 +138,7 @@ class Workout {
       'weight': 0,
       'isCompleted': false,
       'workoutGroup': workoutGroup,
-      'exercises' : exercises,
+      'exercises' : exercises.map((exercise) => exercise.toMap()).toList(),
       'likes': 0,
     });
 

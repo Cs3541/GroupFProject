@@ -131,11 +131,18 @@ void dispose() {
                 TextButton(
                   onPressed: () async {
                     if (workoutType.trim().isNotEmpty) {
+                      final exercises = exerciseNamesText
+                          .split(',')
+                          .map((entry) => entry.trim())
+                          .where((entry) => entry.isNotEmpty)
+                          .map(Exercise.fromInput)
+                          .toList();
+
                       await presenter.addWorkout(
                         workoutType.trim(),
                         int.tryParse(durationText) ?? 0,
                         workoutGroup: workoutGroup,
-                        exerciseNames: exerciseNamesText.split(',').map((e) => e.trim()).toList(),
+                        exercises: exercises,
                       );
                       if (mounted) setState(() {});
                       if (dialogContext.mounted) Navigator.pop(dialogContext);

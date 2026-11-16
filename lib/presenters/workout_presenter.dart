@@ -72,18 +72,12 @@ class WorkoutPresenter {
       ..addAll(samples);
   }
 // edited this section to include workout groups and exercises
-  Future<void> addWorkout(String workoutType, int duration, {String? workoutGroup, List<String> exerciseNames = const []}) async {
-    final id = await Workout.addWorkout(workoutType, duration, workoutGroup: workoutGroup, exerciseNames: exerciseNames);
+  Future<void> addWorkout(String workoutType, int duration, {String? workoutGroup, List<Exercise> exercises = const []}) async {
+    String? id = await Workout.addWorkout(workoutType, duration, workoutGroup: workoutGroup, exercises: exercises);
     if (id == null) return;
 
-    // each name can include a timer, e.g. "Pushups:60"
-    final newExercises = exerciseNames
-        .where((name) => name.trim().isNotEmpty)
-        .map((name) => Exercise.fromInput(name))
-        .toList();
-
     _workouts.add(
-      Workout(id: id, workoutType: workoutType, duration: duration, workoutGroup: workoutGroup, exercises: newExercises),
+      Workout(id: id, workoutType: workoutType, duration: duration, workoutGroup: workoutGroup, exercises: exercises),
     );
   }
 // end section
@@ -140,6 +134,29 @@ Future<void> updateLikes(String workoutId) async {
   int get totalWorkouts => _workouts.length;
 
   int get completedWorkouts => _workouts.where((a) => a.isCompleted).length;
+// for individual exercise completion status(sets)
+  Future<void> updateExerciseStatus(String workoutId, int exerciseIndex, int setIndex) async {
+    int workoutIndex = _workouts.indexWhere((workout) => workout.id == workoutId);
+    if (workoutIndex == -1) return;
+    Workout workout = _workouts[workoutIndex];
+
+    Exercise exercise = _workouts[workoutIndex].exercises[exerciseIndex];
+      exercise.completedSets[setIndex] = !exercise.completedSets[setIndex];
+
+      exercise.isCompleted = exercise.completedSets.isNotEmpty &&
+          exercise.completedSets.every((set) => set);
+
+          bool wasCompleted = _workouts[workoutIndex].isCompleted;
+
+          workout.isCompleted = workout.exercises.isNotEmpty &&
+          workout.exercises.every((exercise) => exercise.isCompleted);
+    
+    await Workout.updateExerciseStatus(workoutId, _workouts[workoutIndex].exercises);
+
+    if (wasCompleted != workout.isCompleted) {
+      await Workout.updateCompletionStatus(workoutId, !workout.isCompleted);
+    }
+  }
 
   // ---------------- exercise timer controls ----------------
 
