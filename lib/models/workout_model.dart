@@ -191,11 +191,15 @@ static Future<String?> saveCompletedWorkout(Workout workout, DateTime startedAt)
   final completedAt = DateTime.now();
   final totalSets = workout.exercises.fold<int>(0, (total, e) => total + e.sets);
   final setsCompleted = workout.exercises.fold<int>(0, (total, e) => total + e.completedSets.where((done) => done).length);
-  final docRef = await _firestore
+  //Changing the way the name of the workout is saved to the completed workouts collection. 
+  final safeName = workout.workoutType.trim().replaceAll('/', '-');
+  final docId = '${safeName}_${completedAt.toIso8601String().split('.').first}';
+  await _firestore
       .collection('users')
       .doc(userId)
       .collection('completedWorkouts')
-      .add({
+      .doc(docId)
+      .set({
         'routineId': workout.id,
         'workoutType': workout.workoutType,
         'workoutGroup': workout.workoutGroup,
@@ -207,7 +211,7 @@ static Future<String?> saveCompletedWorkout(Workout workout, DateTime startedAt)
         'exercises': workout.exercises.map((exercise) => exercise.toMap()).toList(),
       });
 
-      return docRef.id;
+      return docId;
 }
 
 // end
