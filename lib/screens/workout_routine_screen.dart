@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../presenters/workout_presenter.dart';
 // only the library search widget; both files have a WorkoutRoutineScreen class
-import '../views/workout_routine_view.dart' show ExerciseLibrarySearch;
+import '../views/workout_routine_view.dart' show ExerciseLibrarySearch, ExerciseDetailScreen;
 
 
 class WorkoutRoutineScreen extends StatefulWidget {
@@ -38,29 +38,135 @@ void initState() {
 }
 
   Future<void> _loadWorkoutRoutines() async {
-    
-    //should swap load assignments to load workout routines. 
     await presenter.loadWorkoutRoutines();
     setState(() => _isLoading = false);
   }
+//added to open the library data stuff for the exercises details like how the serach bar does. (within workout)
+  Future<void> _OpenExerciseDetails(String? exerciseId) async {
+    if (exerciseId == null) return;
 
-  void _showAddWorkoutDialog() {
-    String workoutType = '';
-    //check these again later
-    String durationText = '';
-    String exerciseNamesText = '';
-    String? workoutGroup = 'other';
+    final exercise = await presenter.getLibraryExerciseById(exerciseId);
+
+    if (exercise != null) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ExerciseDetailScreen(
+            exercise: exercise,
+          ),
+        ), 
+      );
+
+      }
+    }
+
+  void _showEditExerciseDialog(
+    String workoutId,
+    int exerciseIndex,
+    String exerciseName,
+    int sets,
+    int? weight,
+  ) {
+    int updatedSets = sets;
+    int? updatedWeight = weight;
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
+          title: Text('Edit $exerciseName'),
+          content: SizedBox(
+            width: 300,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  value: updatedSets,
+                  decoration: const InputDecoration(labelText: 'Sets'),
+                  items: List.generate(10, (index) {
+                    final value = index + 1;
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text('$value sets'),
+                    );
+                  }),
+                  onChanged: (value) {
+                    if (value != null) {
+                      updatedSets = value;
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: updatedWeight?.toString() ?? '',
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Weight (Optional)'),
+                  onChanged: (value) {
+                    updatedWeight = int.tryParse(value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final workout = presenter.workouts.firstWhere(
+                  (item) => item.id == workoutId,
+                  orElse: () => throw StateError('Workout not found'),
+                );
+
+                if (exerciseIndex >= 0 && exerciseIndex < workout.exercises.length) {
+                  final exercise = workout.exercises[exerciseIndex];
+                  exercise.sets = updatedSets;
+                  exercise.weight = updatedWeight;
+                  exercise.completedSets = List.filled(updatedSets, false);
+                }
+
+                if (!mounted) return;
+                setState(() {});
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddWorkoutDialog() {
+    String workoutType = '';
+    String durationText = '';
+    String search = '';
+    String? workoutGroup = 'other';
+
+    final LibraryFuture = presenter.loadLibraryExercises(); 
+    
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
           title: const Text('Add Workout Routine'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          content: SizedBox(
+            width: 350,
+            height: 450,
+            child: Column(
             children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
               TextField(
-                decoration: const InputDecoration(labelText: 'Workout Routine Type'),
+                decoration: const InputDecoration(labelText: 'Workout Routine Name'),
                 onChanged: (value) => workoutType = value,
               ),
               TextField(
@@ -70,7 +176,7 @@ void initState() {
               DropdownButton<String>(
                 value: workoutGroup,
                 onChanged: (value) {
-                  setState(() {
+                  setDialogState(() {
                     workoutGroup = value;
                   });
                 },
@@ -81,11 +187,100 @@ void initState() {
                   );
                 }).toList(),
               ),
+              const Divider(),
+              const Text('Select Exercises',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+
               TextField(
-                decoration: const InputDecoration(labelText: 'Exercise Names (Optional)'),
-                onChanged: (value) => exerciseNamesText = value,
+                decoration: const InputDecoration(
+                  labelText: 'Search Exercises',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  setDialogState(() {
+                    search = value;
+                  });
+                },
+              ),
+
+              FutureBuilder(
+                future: LibraryFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final exercises = snapshot.data!.where((exercise) {
+                    return exercise.name.toLowerCase().contains(search.toLowerCase());
+                  }).toList();
+
+                  return SizedBox(
+                    height: 150,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: exercises.length,
+                      itemBuilder: (context, index){
+                        final exercise = exercises[index];
+
+                        return CheckboxListTile(
+                          title: Text(exercise.name),
+                          value: presenter.getSelectedExercises().any(
+                            (e) => e.libraryExerciseId == exercise.id,
+                          ),
+                          onChanged: (value) {
+                            setDialogState(() {
+                                presenter.toggleExerciseSelection(exercise.id, exercise.name, value== true);
+                               
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+
+              const Divider(),
+
+              const Text('Selected Exercises'),
+              ...presenter.getSelectedExercises().map((exercise) {
+                return Column(
+                  children: [
+                    Text(exercise.name),
+                    DropdownButton<int>(
+                      value: exercise.sets,
+                      items: List.generate(10, (index) {
+                        return DropdownMenuItem<int>(
+                          value: index + 1,
+                          child: Text('${index + 1} sets'),
+                        );
+                      }),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() {
+                          exercise.sets = value;
+                          exercise.completedSets = List.filled(value, false);
+                        });
+                      },
+                    ),
+                    TextField(
+                      decoration: const InputDecoration(labelText: 'Weight (Optional)'),
+                      keyboardType: TextInputType.number,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          exercise.weight = int.tryParse(value);
+                        });
+                      },
+                    ),
+                  ],
+                );
+              }),
+                    ],
+                  ),
+                ),
               ),
             ],
+          ),
           ),
           actions: [
             TextButton(
@@ -99,8 +294,10 @@ void initState() {
                     workoutType.trim(),
                     int.tryParse(durationText) ?? 0,
                     workoutGroup: workoutGroup,
-                    exerciseNames: exerciseNamesText.split(',').map((e) => e.trim()).toList(),
+                    exercises: presenter.getSelectedExercises().toList(),
                   );
+
+                  if (!mounted) return;
                   setState(() {});
                   Navigator.pop(context);
                 }
@@ -109,6 +306,8 @@ void initState() {
             ),
           ],
         );
+      },
+    );
       },
     );
   }
@@ -182,7 +381,12 @@ void initState() {
                   child: ExpansionTile(
                     title: Text(
                       workout.workoutType,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style:  TextStyle(fontWeight: FontWeight.bold,
+                      //should cross out the completed workout once the checkboxes are marked. some trouble with it not working yet.
+                      decoration: workout.isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
                     ),
                     subtitle: Text(workout.duration.toString()),
 
@@ -190,12 +394,14 @@ void initState() {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
-                            onPressed: () async {
-                              await presenter.updateLikes(workout.id!);
-                              if (!mounted) return;
-                              setState(() {});
-                            },
+                            icon: Icon(Icons.favorite, color: presenter.hasLiked(workout.id!) ? Colors.pinkAccent : Colors.grey),
+                            onPressed: presenter.hasLiked(workout.id!)
+                                ? null
+                                : () async {
+                                    await presenter.updateLikes(workout.id!);
+                                    if (!mounted) return;
+                                    setState(() {});
+                                  },
                           ),
 
                           Text(workout.likes.toString()),
@@ -221,14 +427,35 @@ void initState() {
                         ...workout.exercises.asMap().entries.map((entry) {
                           final exerciseIndex = entry.key;
                           final exercise = entry.value;
-                          return CheckboxListTile(
-                            title: Text(exercise.name),
-                            value: exercise.isCompleted,
-                            onChanged: (value) async {
-                              await presenter.updateExerciseCompleted(workout.id!, exerciseIndex,);
-                              if (!mounted) return;
-                              setState(() {});
-                            },
+
+                          return Column(
+                            children: [
+                              ListTile(
+                                title: Text(exercise.name),
+                                subtitle: Text('Sets: ${exercise.sets}, Weight: ${exercise.weight ?? 'N/A'}'),
+                                onTap: () => _OpenExerciseDetails(exercise.libraryExerciseId),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () {
+                                    _showEditExerciseDialog(workout.id!, exerciseIndex, exercise.name, exercise.sets, exercise.weight);
+                                    
+                                    if (!mounted) return;
+                                    setState(() {});
+                                  },
+                                ),
+                              ),
+                              ...List.generate(exercise.sets, (setIndex) {
+                                return CheckboxListTile(
+                                  title: Text('Set ${setIndex + 1}'),
+                                  value: exercise.completedSets[setIndex],
+                                  onChanged: (value) async {
+                                    await presenter.updateExerciseStatus(workout.id!, exerciseIndex, setIndex,);
+                                    if (!mounted) return;
+                                    setState(() {});
+                                  },
+                                );
+                              }),
+                            ],
                           );
                         }),
                       ],
