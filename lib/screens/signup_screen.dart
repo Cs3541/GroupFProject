@@ -14,23 +14,35 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _presenter = AuthPresenter();
+  bool _creatingAccount = false;
 
   String? _errorMessage;
 
-  void _handleSignup() async {
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPasswordController.text.trim();
+  Future<void> _handleSignup() async {
+    if (_creatingAccount) return;
+
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
 
     if (password != confirmPassword) {
-      setState(() => _errorMessage = "Passwords do not match.");
+      setState(() => _errorMessage = 'Passwords do not match.');
       return;
     }
+
+    setState(() {
+      _creatingAccount = true;
+      _errorMessage = null;
+    });
+
     final error = await _presenter.signUp(
       _emailController.text.trim(),
       password,
     );
+
     if (!mounted) return;
+
     setState(() {
+      _creatingAccount = false;
       _errorMessage = error;
     });
   }
@@ -64,8 +76,8 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _handleSignup,
-              child: const Text('Sign Up'),
+              onPressed: _creatingAccount ? null : _handleSignup,
+              child: Text(_creatingAccount ? 'Creating account…' : 'Sign Up'),
             ),
             TextButton( onPressed: () {
               Navigator.pushReplacement(
