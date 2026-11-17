@@ -49,6 +49,8 @@ class Exercise {
   }
 }
 // end
+
+
 class Workout {
   String? id;
   String workoutType;
@@ -145,26 +147,7 @@ class Workout {
     return newDocRef.id;
   }
 
-    // testing with sample workouts since cant log in yet.
-  static Future<List<Workout>> fetchSampleWorkouts() async {
-  await Future.delayed(const Duration(seconds: 1));
 
-
-  return [
-    Workout(
-      id: 'w1',
-      workoutType: 'Upper Body Workout',
-      duration: 45 ,
-      workoutGroup: 'chest',
-      exercises: [
-        Exercise(name: 'Bench Press'),
-        Exercise(name: 'Push Ups'),
-        Exercise(name: 'Pull Ups'),
-      ],
-      likes: 120000,
-    ),
-  ];
-}
 
 
   // Refactored to accept just the ID and the new status to decouple from UI state
@@ -207,6 +190,8 @@ class Workout {
     await _userWorkoutsRef(userId).doc(id).delete();
   }
 }
+
+
 
 // ---------------- exercise library ----------------
 // An exercise from the shared 'exercises' collection (the library),

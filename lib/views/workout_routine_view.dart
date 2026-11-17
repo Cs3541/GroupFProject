@@ -74,7 +74,6 @@ void dispose() {
 
   void _showAddWorkoutDialog() {
     String workoutType = '';
-    //check these again later
     String durationText = '';
     String exerciseNamesText = '';
     String? workoutGroup = 'other';

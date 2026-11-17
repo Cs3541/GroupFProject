@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/workout_model.dart';
 import '../presenters/workout_presenter.dart';
 // only the library search widget; both files have a WorkoutRoutineScreen class
 import '../views/workout_routine_view.dart' show ExerciseLibrarySearch, ExerciseDetailScreen;
@@ -39,31 +38,107 @@ void initState() {
 }
 
   Future<void> _loadWorkoutRoutines() async {
-    
-    //should swap load assignments to load workout routines. 
     await presenter.loadWorkoutRoutines();
     setState(() => _isLoading = false);
   }
 //added to open the library data stuff for the exercises details like how the serach bar does. (within workout)
-  Future<void> _OpenExerciseDetails(Exercise exercise) async {
-    if (exercise.libraryExerciseId == null) return;
+  Future<void> _OpenExerciseDetails(String? exerciseId) async {
+    if (exerciseId == null) return;
 
-    final libraryExercise = await LibraryExercise.fetchLibrary();
+    final exercise = await presenter.getLibraryExerciseById(exerciseId);
 
-    for (var item in libraryExercise) {
-      if (item.id == exercise.libraryExerciseId) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ExerciseDetailScreen(exercise: item),
+    if (exercise != null) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ExerciseDetailScreen(
+            exercise: exercise,
           ),
-        );
-        return;
+        ), 
+      );
+
       }
     }
 
-  }
+  void _showEditExerciseDialog(
+    String workoutId,
+    int exerciseIndex,
+    String exerciseName,
+    int sets,
+    int? weight,
+  ) {
+    int updatedSets = sets;
+    int? updatedWeight = weight;
 
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit $exerciseName'),
+          content: SizedBox(
+            width: 300,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  value: updatedSets,
+                  decoration: const InputDecoration(labelText: 'Sets'),
+                  items: List.generate(10, (index) {
+                    final value = index + 1;
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text('$value sets'),
+                    );
+                  }),
+                  onChanged: (value) {
+                    if (value != null) {
+                      updatedSets = value;
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: updatedWeight?.toString() ?? '',
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Weight (Optional)'),
+                  onChanged: (value) {
+                    updatedWeight = int.tryParse(value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final workout = presenter.workouts.firstWhere(
+                  (item) => item.id == workoutId,
+                  orElse: () => throw StateError('Workout not found'),
+                );
+
+                if (exerciseIndex >= 0 && exerciseIndex < workout.exercises.length) {
+                  final exercise = workout.exercises[exerciseIndex];
+                  exercise.sets = updatedSets;
+                  exercise.weight = updatedWeight;
+                  exercise.completedSets = List.filled(updatedSets, false);
+                }
+
+                if (!mounted) return;
+                setState(() {});
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void _showAddWorkoutDialog() {
     String workoutType = '';
@@ -71,9 +146,7 @@ void initState() {
     String search = '';
     String? workoutGroup = 'other';
 
-    Map<String, Exercise> selectedExercises = {};
-
-    final LibraryFuture = LibraryExercise.fetchLibrary(); 
+    final LibraryFuture = presenter.loadLibraryExercises(); 
     
 
     showDialog(
@@ -103,7 +176,7 @@ void initState() {
               DropdownButton<String>(
                 value: workoutGroup,
                 onChanged: (value) {
-                  setState(() {
+                  setDialogState(() {
                     workoutGroup = value;
                   });
                 },
@@ -131,7 +204,7 @@ void initState() {
                 },
               ),
 
-              FutureBuilder<List<LibraryExercise>>(
+              FutureBuilder(
                 future: LibraryFuture,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
@@ -151,17 +224,13 @@ void initState() {
 
                         return CheckboxListTile(
                           title: Text(exercise.name),
-                          value: selectedExercises.containsKey(exercise.id),
+                          value: presenter.getSelectedExercises().any(
+                            (e) => e.libraryExerciseId == exercise.id,
+                          ),
                           onChanged: (value) {
-                            setState(() {
-                              if (value == true) {
-                                selectedExercises[exercise.id] = Exercise(
-                                  name: exercise.name,
-                                  libraryExerciseId: exercise.id,
-                                );
-                              } else {
-                                selectedExercises.remove(exercise.id);
-                              }
+                            setDialogState(() {
+                                presenter.toggleExerciseSelection(exercise.id, exercise.name, value== true);
+                               
                             });
                           },
                         );
@@ -174,7 +243,7 @@ void initState() {
               const Divider(),
 
               const Text('Selected Exercises'),
-              ...selectedExercises.values.map((exercise) {
+              ...presenter.getSelectedExercises().map((exercise) {
                 return Column(
                   children: [
                     Text(exercise.name),
@@ -188,7 +257,7 @@ void initState() {
                       }),
                       onChanged: (value) {
                         if (value == null) return;
-                        setState(() {
+                        setDialogState(() {
                           exercise.sets = value;
                           exercise.completedSets = List.filled(value, false);
                         });
@@ -198,7 +267,7 @@ void initState() {
                       decoration: const InputDecoration(labelText: 'Weight (Optional)'),
                       keyboardType: TextInputType.number,
                       onChanged: (value) {
-                        setState(() {
+                        setDialogState(() {
                           exercise.weight = int.tryParse(value);
                         });
                       },
@@ -225,7 +294,7 @@ void initState() {
                     workoutType.trim(),
                     int.tryParse(durationText) ?? 0,
                     workoutGroup: workoutGroup,
-                    exercises: selectedExercises.values.toList(),
+                    exercises: presenter.getSelectedExercises().toList(),
                   );
 
                   if (!mounted) return;
@@ -325,12 +394,14 @@ void initState() {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
-                            onPressed: () async {
-                              await presenter.updateLikes(workout.id!);
-                              if (!mounted) return;
-                              setState(() {});
-                            },
+                            icon: Icon(Icons.favorite, color: presenter.hasLiked(workout.id!) ? Colors.pinkAccent : Colors.grey),
+                            onPressed: presenter.hasLiked(workout.id!)
+                                ? null
+                                : () async {
+                                    await presenter.updateLikes(workout.id!);
+                                    if (!mounted) return;
+                                    setState(() {});
+                                  },
                           ),
 
                           Text(workout.likes.toString()),
@@ -362,7 +433,16 @@ void initState() {
                               ListTile(
                                 title: Text(exercise.name),
                                 subtitle: Text('Sets: ${exercise.sets}, Weight: ${exercise.weight ?? 'N/A'}'),
-                                onTap: () => _OpenExerciseDetails(exercise),
+                                onTap: () => _OpenExerciseDetails(exercise.libraryExerciseId),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () {
+                                    _showEditExerciseDialog(workout.id!, exerciseIndex, exercise.name, exercise.sets, exercise.weight);
+                                    
+                                    if (!mounted) return;
+                                    setState(() {});
+                                  },
+                                ),
                               ),
                               ...List.generate(exercise.sets, (setIndex) {
                                 return CheckboxListTile(

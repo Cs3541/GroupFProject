@@ -6,6 +6,9 @@ class WorkoutPresenter {
   final List<Workout> _workouts = [];
 
   List<Workout> get workouts => _workouts;
+  final Set<String> _likedWorkouts = {};
+  List<LibraryExercise> _libraryExercises = [];
+  final Map<String, Exercise> _selectedExercises = {};
 
   // ---------------- exercise timer state ----------------
   Timer? _timer;
@@ -64,12 +67,75 @@ class WorkoutPresenter {
 
   Future<void> loadWorkoutRoutines() async {
     final fetched = await Workout.fetchWorkout();
-    final samples = await Workout.fetchSampleWorkouts();
+
 
     _workouts
       ..clear()
-      ..addAll(fetched)
-      ..addAll(samples);
+      ..addAll(fetched);
+
+  }
+
+  Future<List<LibraryExercise>> loadLibraryExercises() async {
+    if (_libraryExercises.isEmpty) {
+      _libraryExercises = await LibraryExercise.fetchLibrary();
+    }
+    return _libraryExercises;
+  }
+
+  Future<LibraryExercise?> getLibraryExerciseById(String id) async {
+    final exercises = await loadLibraryExercises();
+
+    for (final exercise in exercises) {
+      if (exercise.id == id) {
+        return exercise;
+      }
+    }
+
+    return null;
+  }
+
+  List<Exercise> getSelectedExercises() {
+    return _selectedExercises.values.toList();
+  }
+
+  void toggleExerciseSelection(String id, String name, bool selected) {
+    if (selected) {
+      _selectedExercises[id] = Exercise(name: name, libraryExerciseId: id);
+    } else {
+      _selectedExercises.remove(id);
+    }
+  }
+
+  void updateSelectedExerciseSets(String id, int sets) {
+    final exercise = _selectedExercises[id];
+
+    if (exercise == null) return;
+    exercise.sets = sets;
+    exercise.completedSets = List.filled(sets, false);
+  }
+
+  void updateSelectedExerciseWeight(String id, int? weight) {
+    final exercise = _selectedExercises[id];
+
+    if (exercise == null) return;
+    exercise.weight = weight;
+  }
+// added to update the sets and weights as you go. increase and or decrease them
+  Future<void> updateExerciseDetails(String workoutId, int exerciseIndex, int sets, int? weight) async {
+    final workoutIndex = _workouts.indexWhere((workout) => workout.id == workoutId);
+    if (workoutIndex == -1) return;
+
+    final workout = _workouts[workoutIndex];
+    if (exerciseIndex < 0 || exerciseIndex >= workout.exercises.length) return;
+
+    final exercise = workout.exercises[exerciseIndex];
+
+    exercise.sets = sets;
+    exercise.weight = weight;
+    exercise.completedSets = List.filled(sets, false);
+
+    await Workout.updateExerciseStatus(workoutId, workout.exercises);
+
   }
 // edited this section to include workout groups and exercises
   Future<void> addWorkout(String workoutType, int duration, {String? workoutGroup, List<Exercise> exercises = const []}) async {
@@ -118,11 +184,18 @@ Future<void> updateLikes(String workoutId) async {
     final workoutIndex = _workouts.indexWhere((workout) => workout.id == workoutId);
     if (workoutIndex == -1) return;
 
+    if (_likedWorkouts.contains(workoutId)) return;
+    
+
     final newLikes = _workouts[workoutIndex].likes + 1;
 
     await Workout.updateLikes(workoutId, newLikes);
     _workouts[workoutIndex].likes = newLikes;
+
+    _likedWorkouts.add(workoutId);
   }
+
+  bool hasLiked(String workoutId) { return _likedWorkouts.contains(workoutId); }
 
   Future<void> deleteWorkout(String id) async {
     if (id == _activeWorkoutId) stopTimer();
@@ -157,6 +230,7 @@ Future<void> updateLikes(String workoutId) async {
       await Workout.updateCompletionStatus(workoutId, !workout.isCompleted);
     }
   }
+  
 
   // ---------------- exercise timer controls ----------------
 
