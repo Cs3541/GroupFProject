@@ -150,50 +150,69 @@ class _CalendarStripState extends State<CalendarStrip> {
             ),
           ),
           const SizedBox(height: 4),
-
-          Row(
+ Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
                 tooltip: 'Previous 7 days',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 36, height: 40),
                 onPressed: () => _goToPage(currentPage - 1),
               ),
               Expanded(
-                child: SizedBox(
-                  height: 72,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: _onPageChanged,
-                    itemBuilder: (context, page) {
-                      final days = _presenter.daysForPage(page - _originPage);
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: days
-                            .map(
-                              (day) => _DateCircle(
-                                day: day,
-                                isSelected: CalendarPresenter.isSameDay(
-                                  day,
-                                  _presenter.selectedDay,
-                                ),
-                                isToday: CalendarPresenter.isSameDay(
-                                  day,
-                                  _presenter.today,
-                                ),
-                                isMarked: widget.isMarked?.call(day) ?? false,
-                                color: color,
-                                onTap: () => _onDayTapped(day),
-                              ),
-                            )
-                            .toList(),
-                      );
-                    },
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // 7 equal slots, 4dp breathing room each, never larger than 36
+                    final circleSize =
+                        (constraints.maxWidth / 7 - 4).clamp(24.0, 36.0);
+                    final labelHeight =
+                        MediaQuery.textScalerOf(context).scale(12) * 1.4;
+                    final stripHeight =
+                        labelHeight + 4 + circleSize + 4 + 5 + 4;
+
+                    return SizedBox(
+                      height: stripHeight,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (context, page) {
+                          final days =
+                              _presenter.daysForPage(page - _originPage);
+                          return Row(
+                            children: days
+                                .map(
+                                  (day) => Expanded(
+                                    child: _DateCircle(
+                                      day: day,
+                                      size: circleSize,
+                                      isSelected: CalendarPresenter.isSameDay(
+                                        day,
+                                        _presenter.selectedDay,
+                                      ),
+                                      isToday: CalendarPresenter.isSameDay(
+                                        day,
+                                        _presenter.today,
+                                      ),
+                                      isMarked:
+                                          widget.isMarked?.call(day) ?? false,
+                                      color: color,
+                                      onTap: () => _onDayTapped(day),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
                 tooltip: 'Next 7 days',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 36, height: 40),
                 onPressed: () => _goToPage(currentPage + 1),
               ),
             ],
@@ -206,6 +225,7 @@ class _CalendarStripState extends State<CalendarStrip> {
 
 class _DateCircle extends StatelessWidget {
   final DateTime day;
+  final double size;
   final bool isSelected;
   final bool isToday;
   final bool isMarked;
@@ -214,6 +234,7 @@ class _DateCircle extends StatelessWidget {
 
   const _DateCircle({
     required this.day,
+    required this.size,
     required this.isSelected,
     required this.isToday,
     required this.isMarked,
@@ -236,24 +257,29 @@ class _DateCircle extends StatelessWidget {
           const SizedBox(height: 4),
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 36,
-            height: 36,
+            width: size,
+            height: size,
             alignment: Alignment.center,
+            padding: EdgeInsets.all(size * 0.15),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isSelected ? color : Colors.white.withValues(alpha: 0.85),
               border: Border.all(
-                color: isToday || isSelected
-                    ? color
-                    : color.withValues(alpha: 0.2),
+                color: isToday || isSelected ? color : color.withValues(alpha: 0.3),
                 width: isToday ? 2 : 1,
               ),
             ),
-            child: Text(
-              '${day.day}',
-              style: TextStyle(
-                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : Colors.black87,
+            // FittedBox shrinks the number if a large system font
+            // would otherwise spill outside the circle
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${day.day}',
+                style: TextStyle(
+                  fontSize: size * 0.4, // 36 -> ~14, same as before
+                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Colors.white : Colors.black87,
+                ),
               ),
             ),
           ),
