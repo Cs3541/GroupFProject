@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../presenters/auth_presenter.dart';
+import '../screens/profile_setup_screen.dart';
+
 
 class ProfileScreen extends StatelessWidget {
   final AuthPresenter _presenter = AuthPresenter();
@@ -8,6 +10,25 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     await _presenter.logout();
+  }
+  Future<void> _editProfile(BuildContext context) async {
+    final uid = _presenter.getCurrentUserId();
+    if (uid == null) return;
+
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => ProfileSetupScreen(
+          uid: uid,
+          isEditing: true,
+        ),
+      ),
+    );
+
+    if (!context.mounted || saved != true) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile updated.')),
+    );
   }
 
   @override
@@ -42,14 +63,24 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 40),
+               ElevatedButton.icon(
+                onPressed: () => _editProfile(context),
+                icon: const Icon(Icons.info),
+                label: const Text('Change User Information'),
+                style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                backgroundColor: Colors.red,
+              )
+              ),
+            const SizedBox(height: 15),
             ElevatedButton.icon(
-              onPressed: () => _logout(context),
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
-              style: ElevatedButton.styleFrom(
+                onPressed: () =>  _logout(context),
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout'),
+                style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
                 backgroundColor: Colors.redAccent,
-              ),
+              )
             ),
           ],
         ),
