@@ -182,6 +182,34 @@ class Workout {
 
     await _userWorkoutsRef(userId).doc(workoutId).update({'likes': likes});
   }
+
+//Saves a completed routine to the firestore database.
+static Future<String?> saveCompletedWorkout(Workout workout, DateTime startedAt) async {
+  final userId = _auth.currentUser?.uid;
+  if (userId == null) return null;
+
+  final completedAt = DateTime.now();
+  final totalSets = workout.exercises.fold<int>(0, (total, e) => total + e.sets);
+  final setsCompleted = workout.exercises.fold<int>(0, (total, e) => total + e.completedSets.where((done) => done).length);
+  final docRef = await _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('completedWorkouts')
+      .add({
+        'routineId': workout.id,
+        'workoutType': workout.workoutType,
+        'workoutGroup': workout.workoutGroup,
+        'startedAt': Timestamp.fromDate(startedAt),
+        'completedAt': Timestamp.fromDate(completedAt),
+        'durationSeconds': completedAt.difference(startedAt).inSeconds,
+        'totalSets': totalSets,
+        'setsCompleted': setsCompleted,
+        'exercises': workout.exercises.map((exercise) => exercise.toMap()).toList(),
+      });
+
+      return docRef.id;
+}
+
 // end
   static Future<void> deleteWorkout(String id) async {
     final userId = _auth.currentUser?.uid;

@@ -9,7 +9,11 @@ class WorkoutPresenter {
   final Set<String> _likedWorkouts = {};
   List<LibraryExercise> _libraryExercises = [];
   final Map<String, Exercise> _selectedExercises = {};
+  //keeps track of which routine is active and timestamp
+  String? _activeRoutineId;
+  DateTime? _routineStartedAt;
 
+  bool isRoutineActive(String workoutId) => _activeRoutineId == workoutId;
   // ---------------- exercise timer state ----------------
   Timer? _timer;
   String? _activeWorkoutId;
@@ -230,7 +234,35 @@ Future<void> updateLikes(String workoutId) async {
       await Workout.updateCompletionStatus(workoutId, !workout.isCompleted);
     }
   }
-  
+  //Routine start/finish
+  void startRoutine(String workoutId) {
+    _activeRoutineId = workoutId;
+    _routineStartedAt = DateTime.now();
+  }
+
+  //Saves routine data to completed routines collection and resets active routine
+  Future<bool> finishRoutine() async {
+    final workout = _findWorkout(_activeRoutineId);
+    final startedAt = _routineStartedAt;
+    if (workout == null || startedAt == null) return false;
+
+    final savedId = await Workout.saveCompletedWorkout(workout, startedAt);
+    if (savedId == null) return false;
+
+    for (final exercise in workout.exercises) {
+      exercise.completedSets = List.filled(exercise.sets, false);
+      exercise.isCompleted = false;
+    }
+    await Workout.updateExerciseStatus(workout.id!, workout.exercises);
+
+    if (workout.isCompleted) {
+      await Workout.updateCompletionStatus(workout.id!, true);
+      workout.isCompleted = false;
+    }
+    _activeRoutineId = null;
+    _routineStartedAt = null;
+    return true;
+  }
 
   // ---------------- exercise timer controls ----------------
 
