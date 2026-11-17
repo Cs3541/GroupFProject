@@ -15,4 +15,5 @@ class AuthPresenter {
   Stream<User?> authStateChanges() => _model.authStateChanges();
 
   String? getCurrentUserEmail() => _model.currentUser?.email;
+  String? getCurrentUserId() => _model.currentUser?.uid;
 }
