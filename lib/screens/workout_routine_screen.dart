@@ -448,16 +448,46 @@ void initState() {
                                 return CheckboxListTile(
                                   title: Text('Set ${setIndex + 1}'),
                                   value: exercise.completedSets[setIndex],
-                                  onChanged: (value) async {
+                                  //changing onChanged here so that you can only mark off sets when a routine is active.
+                                  onChanged: presenter.isRoutineActive(workout.id!) 
+                                  ? (value) async {
                                     await presenter.updateExerciseStatus(workout.id!, exerciseIndex, setIndex,);
                                     if (!mounted) return;
                                     setState(() {});
-                                  },
+                                  }
+                                  : null,
                                 );
                               }),
                             ],
                           );
                         }),
+                        //Adding start/finish button for routine activation toggle
+                        if (workout.exercises.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: presenter.isRoutineActive(workout.id!)
+                                ? ElevatedButton.icon(
+                                  icon: const Icon(Icons.check),
+                                  label: const Text('Finish Routine'),
+                                  onPressed: () async {
+                                    final saved = await presenter.finishRoutine();
+                                    if (!context.mounted) return;
+                                    setState(() {});
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(saved
+                                            ? 'Workout Saved!'
+                                            : 'Could not save workout.')),
+                                    );
+                                  },
+                                )
+                              : ElevatedButton.icon(
+                                icon: const Icon(Icons.play_arrow),
+                                label: const Text('Start Routine'),
+                                onPressed: () => setState(() => presenter.startRoutine(workout.id!)),
+                                ),
+                          ),
+                                
                       ],
                   ),
                 );
