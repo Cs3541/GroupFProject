@@ -10,7 +10,7 @@ class TemporaryLastPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text('Temporary Last Page', style: TextStyle(fontSize: 18)),
+      child: Text('Temporary Last Page graph???', style: TextStyle(fontSize: 18)),
     );
   }
 }

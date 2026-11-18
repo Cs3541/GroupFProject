@@ -12,7 +12,7 @@ class FirstPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text('First Page', style: TextStyle(fontSize: 18)),
+      child: Text('First Page Super Cool Graph!', style: TextStyle(fontSize: 18)),
     );
   }
 }
