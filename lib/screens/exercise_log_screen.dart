@@ -241,17 +241,31 @@ class _ExerciseLogScreenState extends State<ExerciseLogScreen>
                   onPressed: () {
                     if (selectedExercise == null) return;
 
-                    _presenter.addExerciseLog(
-                      exercise: selectedExercise!,
-                      sets: int.tryParse(setsController.text.trim()),
-                      reps: int.tryParse(repsController.text.trim()),
-                      weight: double.tryParse(weightController.text.trim()),
-                      distance: double.tryParse(distanceController.text.trim()),
-                      durationMinutes: double.tryParse(
-                        durationController.text.trim(),
-                      ),
+                    final exercise = selectedExercise!;
+                    final sets = int.tryParse(setsController.text.trim());
+                    final reps = int.tryParse(repsController.text.trim());
+                    final weight = double.tryParse(
+                      weightController.text.trim(),
                     );
+                    final distance = double.tryParse(
+                      distanceController.text.trim(),
+                    );
+                    final duration = double.tryParse(
+                      durationController.text.trim(),
+                    );
+
+                    // Unfocus keyboard/overlay and close dialog BEFORE triggering presenter rebuilds
+                    FocusScope.of(context).unfocus();
                     Navigator.pop(context);
+
+                    _presenter.addExerciseLog(
+                      exercise: exercise,
+                      sets: sets,
+                      reps: reps,
+                      weight: weight,
+                      distance: distance,
+                      durationMinutes: duration,
+                    );
                   },
                   child: const Text('Save'),
                 ),
@@ -260,13 +274,7 @@ class _ExerciseLogScreenState extends State<ExerciseLogScreen>
           },
         );
       },
-    ).whenComplete(() {
-      setsController.dispose();
-      repsController.dispose();
-      weightController.dispose();
-      distanceController.dispose();
-      durationController.dispose();
-    });
+    );
   }
 
   String _formatLogSummary(ExerciseLog log) {

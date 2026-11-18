@@ -237,7 +237,7 @@ class _GoalsScreenState extends State<GoalsScreen> implements GoalsView {
                   const Padding(
                     padding: EdgeInsets.only(bottom: 8.0),
                     child: Text(
-                      'Distance Tracking',
+                      'Metric Tracking',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
