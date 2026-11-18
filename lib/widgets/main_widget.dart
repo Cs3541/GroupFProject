@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../widgets/main_widget_sub_widgets/first_page.dart';
-import '../widgets/main_widget_sub_widgets/goals_progress_page.dart';
-import '../widgets/main_widget_sub_widgets/temporary_last_page.dart';
+import 'main_widget_sub_pages/first_page.dart';
+import 'main_widget_sub_pages/goals_progress_page.dart';
+import 'main_widget_sub_pages/temporary_last_page.dart';
 
 class MainWidget{
   final String label;
