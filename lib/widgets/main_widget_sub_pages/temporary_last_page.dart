@@ -4,13 +4,23 @@
 
 import 'package:flutter/material.dart';
 
-class TemporaryLastPage extends StatelessWidget {
-  const TemporaryLastPage({super.key});
+import '../progress_graph.dart';
+
+class StrengthPlaceholder extends StatelessWidget {
+  const StrengthPlaceholder({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Temporary Last Page graph???', style: TextStyle(fontSize: 18)),
+    return const ProgressGraph(
+      title: 'Strength progress',
+      summary: '130 lb',
+      subtitle: 'Bench press · 8 reps per set',
+      values: [115, 115, 120, 120, 125, 125, 130],
+      labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7'],
+      color: Colors.teal,
+      minY: 100,
+      maxY: 140,
+      yInterval: 10,
     );
   }
 }
