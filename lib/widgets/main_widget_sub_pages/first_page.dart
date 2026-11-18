@@ -6,13 +6,24 @@
 
 import 'package:flutter/material.dart';
 
-class FirstPage extends StatelessWidget {
-  const FirstPage({super.key});
+import '../progress_graph.dart';
+
+class CaloriesGraph extends StatelessWidget {
+  const CaloriesGraph({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('First Page Super Cool Graph!', style: TextStyle(fontSize: 18)),
+    return const ProgressGraph(
+      title: 'Calories burned',
+      summary: '2,220 kcal',
+      subtitle: 'Total calories burned per week',
+      values: [220, 340, 280, 410, 190, 360, 420],
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      color: Colors.deepOrange,
+      minY: 0,
+      maxY: 500,
+      yInterval: 100,
+      isBarChart: true,
     );
   }
 }
