@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../presenters/workout_presenter.dart';
 // only the library search widget; both files have a WorkoutRoutineScreen class
 import '../views/workout_routine_view.dart' show ExerciseLibrarySearch, ExerciseDetailScreen;
+import '../models/workout_model.dart';
 
 
 class WorkoutRoutineScreen extends StatefulWidget {
@@ -123,9 +124,8 @@ void initState() {
 
                 if (exerciseIndex >= 0 && exerciseIndex < workout.exercises.length) {
                   final exercise = workout.exercises[exerciseIndex];
-                  exercise.sets = updatedSets;
+                  exercise.resetSets(updatedSets); // Reset completedSets when sets change
                   exercise.weight = updatedWeight;
-                  exercise.completedSets = List.filled(updatedSets, false);
                 }
 
                 if (!mounted) return;
@@ -259,6 +259,7 @@ void initState() {
                         if (value == null) return;
                         setDialogState(() {
                           exercise.sets = value;
+                          exercise.resetSets(value); // Reset completedSets when sets change
                           exercise.completedSets = List.filled(value, false);
                         });
                       },
@@ -311,9 +312,217 @@ void initState() {
       },
     );
   }
+  List<Widget> _buildRoutineContents(workout) {
+    return [
+    const Padding( //Moved the active routine dialog into a widget to allow for canceling out.
+      padding: EdgeInsets.all(8.0),
+      child: Text('Exercises', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+    ),
+    if (workout.exercises.isEmpty)
+      const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Text('No exercises added yet.'),
+      ),
+    ...workout.exercises.asMap().entries.map((entry) {
+      final exerciseIndex = entry.key;
+      final exercise = entry.value;
+
+      return Column(
+        children: [
+          ListTile(
+            title: Text(exercise.name),
+            subtitle: Text('Sets: ${exercise.sets}, Weight: ${exercise.weight ?? 'N/A'}'),
+            onTap: () => _OpenExerciseDetails(exercise.libraryExerciseId),
+            // Changed this button so that it adds a set if the routine is active, and functions as it did before if the routine is not active.
+            trailing: presenter.isRoutineActive(workout.id!)
+                ? IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    tooltip: 'Add set',
+                    onPressed: () => setState(() =>
+                        presenter.addSet(workout.id!, exerciseIndex)),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.edit),
+                    tooltip: 'Edit exercise',
+                    onPressed: () {
+                      _showEditExerciseDialog(workout.id!, exerciseIndex, exercise.name, exercise.sets, exercise.weight);
+
+                      if (!mounted) return;
+                      setState(() {});
+                    },
+                  ),
+          ),
+          ...List.generate(exercise.sets, (setIndex) {
+            final isActive = presenter.isRoutineActive(workout.id!);
+            return CheckboxListTile(
+              // Display the set number and input fields for reps and weight
+              title: Row(
+                children: [
+                  Text('Set ${setIndex + 1}'),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 50, //ran into overflow error with new button so had to shrink
+                    child: TextFormField(
+                      // key includes isActive so the boxes reset to empty after Finish
+                      key: ValueKey('reps-${workout.id}-$exerciseIndex-$setIndex-$isActive-${exercise.sets}'),
+                      initialValue: exercise.setReps[setIndex]?.toString() ?? '',
+                      enabled: isActive,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Reps', isDense: true),
+                      onChanged: (value) { 
+                        presenter.updateSetReps(
+                          workout.id!, exerciseIndex, setIndex, int.tryParse(value));
+                          setState(() {}); 
+                      }
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 75, //ran into overflow error with new button so had to shrink
+                    child: TextFormField(
+                      key: ValueKey('weight-${workout.id}-$exerciseIndex-$setIndex-$isActive-${exercise.sets}'),
+                      initialValue: exercise.setWeights[setIndex]?.toString() ?? '',
+                      enabled: isActive,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Weight',
+                        hintText: exercise.weight?.toString(),
+                        suffixText: presenter.weightUnit,
+                        isDense: true,
+                      ),
+                        //Refactored so that typing causes a screen redraw, 
+                        //enabling the finish workout button if typing is the last step to completing a routine.
+                        //Typing previously did not casue a screen redraw, so the finish button would not enable until a checkbox was clicked.
+                        onChanged: (value) {
+                          presenter.updateSetWeight(
+                            workout.id!, exerciseIndex, setIndex, double.tryParse(value));
+                        setState(() {});
+                      },
+
+                    ),
+                  ),
+                ],
+              ),
+
+              value: exercise.completedSets[setIndex],
+                //adding button to remove sets from an ACTIVE routine.
+                secondary: isActive
+                  ? IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      tooltip: 'Remove set',
+                      onPressed: () => setState(() =>
+                          presenter.removeSet(workout.id!, exerciseIndex, setIndex)),
+                    )
+                  : null,
+              //changing onChanged here so that you can only mark off sets when a routine is active.
+              onChanged: presenter.isRoutineActive(workout.id!) 
+              ? (value) async {
+                await presenter.updateExerciseStatus(workout.id!, exerciseIndex, setIndex,);
+                if (!mounted) return;
+                setState(() {});
+              }
+              : null,
+            );
+          }),
+        ],
+      );
+    }),
+    //Adding start/finish button for routine activation toggle
+    if (workout.exercises.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: presenter.isRoutineActive(workout.id!) 
+              //Rewrote the button function to be disabled if the routine is not complete.
+              ? Column(
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check),
+                    label: const Text('Finish Routine'),
+                    // null disables the button
+                    onPressed: !presenter.isRoutineReady(workout.id!)
+                        ? null
+                        : () async {
+                            final saved = await presenter.finishRoutine();
+                            if (!context.mounted) return;
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(saved
+                                    ? 'Workout Saved!'
+                                    : 'Could not save workout.')),
+                            );
+                          },
+                  ),
+                  if (!presenter.isRoutineReady(workout.id!))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        '${presenter.incompleteSetCount(workout.id!)} set(s) still need reps, '
+                        'weight and a check, or remove them.',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                ],
+              )
+          : ElevatedButton.icon(
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Start Routine'),
+            onPressed: () => setState(() => presenter.startRoutine(workout.id!)),
+            ),
+      ),  
+    ];
+  }
+    //Cancel routine dialog
+    Future<void> _confirmCancelRoutine() async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel routine?'),
+        content: const Text('Your logged sets will not be saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep going'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (discard != true) return;
+
+    await presenter.cancelRoutine();
+    if (!mounted) return;
+    setState(() {});
+  }
+
 
   @override
   Widget build(BuildContext context) {
+    //While a routine is active, it now covers the full routines screen but leaves the main nav bar open.
+    //Added cancel button to exit out of an active routine without saving.
+    final activeRoutine = presenter.activeRoutine;
+    if (activeRoutine != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(activeRoutine.workoutType),
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Cancel routine',
+              onPressed: _confirmCancelRoutine,
+            ),
+          ],
+        ),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: _buildRoutineContents(activeRoutine),
+      ),
+    );
+    }
     final workouts = presenter.workouts;
     final displayedWorkouts = workouts.where((workout) {
       final matchesGroup = _selectedWorkoutFilter == null ||
@@ -414,51 +623,7 @@ void initState() {
                           ),
                         ],
                       ),
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text('Exercises', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        ),
-                        if (workout.exercises.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text('No exercises added yet.'),
-                          ),
-                        ...workout.exercises.asMap().entries.map((entry) {
-                          final exerciseIndex = entry.key;
-                          final exercise = entry.value;
-
-                          return Column(
-                            children: [
-                              ListTile(
-                                title: Text(exercise.name),
-                                subtitle: Text('Sets: ${exercise.sets}, Weight: ${exercise.weight ?? 'N/A'}'),
-                                onTap: () => _OpenExerciseDetails(exercise.libraryExerciseId),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () {
-                                    _showEditExerciseDialog(workout.id!, exerciseIndex, exercise.name, exercise.sets, exercise.weight);
-                                    
-                                    if (!mounted) return;
-                                    setState(() {});
-                                  },
-                                ),
-                              ),
-                              ...List.generate(exercise.sets, (setIndex) {
-                                return CheckboxListTile(
-                                  title: Text('Set ${setIndex + 1}'),
-                                  value: exercise.completedSets[setIndex],
-                                  onChanged: (value) async {
-                                    await presenter.updateExerciseStatus(workout.id!, exerciseIndex, setIndex,);
-                                    if (!mounted) return;
-                                    setState(() {});
-                                  },
-                                );
-                              }),
-                            ],
-                          );
-                        }),
-                      ],
+                      children: _buildRoutineContents(workout),
                   ),
                 );
               },
@@ -466,7 +631,7 @@ void initState() {
           ),
         ],
       ),
-        );
+    );
   }
 }
 

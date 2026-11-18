@@ -7,6 +7,8 @@ class Exercise {
   String? libraryExerciseId;
   int sets;
   List<bool> completedSets;
+  List<int?> setReps;
+  List<double?> setWeights;
   int? weight;
   // How long this exercise should take, in seconds. Null means no timer.
   bool isCompleted;
@@ -17,10 +19,14 @@ class Exercise {
     this.libraryExerciseId,
     this.sets = 3,
     List<bool>? completedSets,
+    List<int?>? setReps,
+    List<double?>? setWeights,
     this.weight,
     this.isCompleted = false,
     this.durationSeconds,
-  }): completedSets = completedSets ?? List.filled(sets, false);
+  }): completedSets = completedSets ?? List.filled(sets, false),
+      setReps = (setReps != null && setReps.length == sets) ? setReps : List<int?>.filled(sets, null),
+      setWeights = (setWeights != null && setWeights.length == sets) ? setWeights : List<double?>.filled(sets, null);
 
   // Builds an Exercise from text like "Pushups:60" (60 second timer) or "Plank" (no timer).
   factory Exercise.fromInput(String input) {
@@ -42,10 +48,20 @@ class Exercise {
       'libraryExerciseId': libraryExerciseId,
       'sets': sets,
       'completedSets': completedSets,
+      'setReps': setReps,
+      'setWeights': setWeights,
       'weight': weight,
       'isCompleted': isCompleted,
       'durationSeconds': durationSeconds,
     };
+  }
+  //Changes number of sets (optionally) and clears everything logged for them
+  void resetSets([int? newSets]) {
+    sets = newSets ?? sets;
+    completedSets = List.filled(sets, false);
+    setReps = List<int?>.filled(sets, null);
+    setWeights = List<double?>.filled(sets, null);
+    isCompleted = false;
   }
 }
 // end
@@ -104,7 +120,10 @@ class Workout {
           completedSets: exerciseMap['completedSets'] == null
               ? null
               : List<bool>.from(exerciseMap['completedSets'] ?? false),
-              weight: exerciseMap['weight'],
+          //Adding the ability to save reps and weights
+          setReps: (exerciseMap['setReps'] as List?)?.map((r) => (r as num?)?.toInt()).toList(),
+          setWeights: (exerciseMap['setWeights'] as List?)?.map((w) => (w as num?)?.toDouble()).toList(),
+          weight: exerciseMap['weight'],
           isCompleted: exerciseMap['isCompleted'] ?? false,
           // older saved exercises won't have this field, so it stays null
           durationSeconds: (exerciseMap['durationSeconds'] as num?)?.toInt(),
@@ -182,6 +201,46 @@ class Workout {
 
     await _userWorkoutsRef(userId).doc(workoutId).update({'likes': likes});
   }
+//reads in the user's preferred units from their profile
+static Future<String> fetchWeightUnit() async {
+  final userId = _auth.currentUser?.uid;
+  if (userId == null) return 'kg';
+
+  final snapshot = await _firestore.collection('users').doc(userId).get();
+  return snapshot.data()?['preferredUnits'] == 'imperial' ? 'lbs' : 'kg';
+}
+//Saves a completed routine to the firestore database.
+static Future<String?> saveCompletedWorkout(Workout workout, DateTime startedAt, String weightUnit) async {
+  final userId = _auth.currentUser?.uid;
+  if (userId == null) return null;
+
+  final completedAt = DateTime.now();
+  final totalSets = workout.exercises.fold<int>(0, (total, e) => total + e.sets);
+  final setsCompleted = workout.exercises.fold<int>(0, (total, e) => total + e.completedSets.where((done) => done).length);
+  //Changing the way the name of the workout is saved to the completed workouts collection. 
+  final safeName = workout.workoutType.trim().replaceAll('/', '-');
+  final docId = '${safeName}_${completedAt.toIso8601String().split('.').first}';
+  await _firestore
+      .collection('users')
+      .doc(userId)
+      .collection('completedWorkouts')
+      .doc(docId)
+      .set({
+        'routineId': workout.id,
+        'workoutType': workout.workoutType,
+        'workoutGroup': workout.workoutGroup,
+        'startedAt': Timestamp.fromDate(startedAt),
+        'completedAt': Timestamp.fromDate(completedAt),
+        'durationSeconds': completedAt.difference(startedAt).inSeconds,
+        'totalSets': totalSets,
+        'setsCompleted': setsCompleted,
+        'weightUnit': weightUnit,
+        'exercises': workout.exercises.map((exercise) => exercise.toMap()).toList(),
+      });
+
+      return docId;
+}
+
 // end
   static Future<void> deleteWorkout(String id) async {
     final userId = _auth.currentUser?.uid;
