@@ -241,6 +241,7 @@ class _ExerciseLogScreenState extends State<ExerciseLogScreen>
                   onPressed: () {
                     if (selectedExercise == null) return;
 
+<<<<<<< HEAD
                     final exercise = selectedExercise!;
                     final sets = int.tryParse(setsController.text.trim());
                     final reps = int.tryParse(repsController.text.trim());
@@ -266,6 +267,19 @@ class _ExerciseLogScreenState extends State<ExerciseLogScreen>
                       distance: distance,
                       durationMinutes: duration,
                     );
+=======
+                    _presenter.addExerciseLog(
+                      exercise: selectedExercise!,
+                      sets: int.tryParse(setsController.text.trim()),
+                      reps: int.tryParse(repsController.text.trim()),
+                      weight: double.tryParse(weightController.text.trim()),
+                      distance: double.tryParse(distanceController.text.trim()),
+                      durationMinutes: double.tryParse(
+                        durationController.text.trim(),
+                      ),
+                    );
+                    Navigator.pop(context);
+>>>>>>> 125a3f6 (feat: Exercise logging.)
                   },
                   child: const Text('Save'),
                 ),
@@ -274,7 +288,17 @@ class _ExerciseLogScreenState extends State<ExerciseLogScreen>
           },
         );
       },
+<<<<<<< HEAD
     );
+=======
+    ).whenComplete(() {
+      setsController.dispose();
+      repsController.dispose();
+      weightController.dispose();
+      distanceController.dispose();
+      durationController.dispose();
+    });
+>>>>>>> 125a3f6 (feat: Exercise logging.)
   }
 
   String _formatLogSummary(ExerciseLog log) {
