@@ -16,16 +16,11 @@ class MainWidgetList extends StatelessWidget {
 
   const MainWidgetList({super.key, required this.selectedDayLabel, this.aspectRatio = 1.6});
 
-
-  //Note for Carson : Whenever we decide what to put on each tab
-  //come back here and change the label name as well as the page
-  //name to whatever we rename the files depending on the purpose of each
-  List<MainWidget> _buildTabs() => [
-    MainWidget(label: selectedDayLabel, page: const FirstPage()),
-    const MainWidget(label: 'Goals', page: GoalsProgressPage()),
-    const MainWidget(label: 'Undecided', page: TemporaryLastPage()),
+  List<MainWidget> _buildTabs() => const [
+    MainWidget(label: 'Calories', page: CaloriesGraph()),
+    MainWidget(label: 'Weight', page: GoalsProgressPage()),
+    MainWidget(label: 'Strength', page: StrengthPlaceholder()),
   ];
-
   @override
   Widget build(BuildContext context){
     final tabs = _buildTabs();
@@ -40,9 +35,19 @@ class MainWidgetList extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: AspectRatio(
-              aspectRatio: aspectRatio,
-              child: TabBarView(children: tabs.map((tab) => tab.page).toList()),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final height = (constraints.maxWidth / aspectRatio)
+                    .clamp(360.0, 440.0)
+                    .toDouble();
+
+                return SizedBox(
+                  height: height,
+                  child: TabBarView(
+                    children: tabs.map((tab) => tab.page).toList(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 8),
