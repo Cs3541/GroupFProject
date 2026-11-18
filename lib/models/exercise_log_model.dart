@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fallguys_fitness_app/views/workout_routine_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'workout_model.dart';
@@ -72,7 +71,15 @@ class ExerciseLog {
 abstract class ExerciseLogRepository {
   Future<List<LibraryExercise>> getExerciseLibrary();
   Future<List<ExerciseLog>> getExerciseHistory(String libraryExerciseId);
-  Future<String> addExerciseLog(ExerciseLog log);
+  Future<String> addExerciseLog({
+    required LibraryExercise exercise,
+    DateTime? loggedAt,
+    int? sets,
+    int? reps,
+    double? weight,
+    double? distance,
+    double? durationMinutes,
+  });
   Future<void> deleteExerciseLog(String logId);
   Future<List<ExerciseLog>> getLogsSince(DateTime cutoff);
   Future<List<ExerciseLog>> getAllLogs();
@@ -107,8 +114,30 @@ class FirestoreExerciseLogRepository implements ExerciseLogRepository {
   }
 
   @override
-  Future<String> addExerciseLog(ExerciseLog log) async {
-    final docRef = await _logsRef.add(log.toMap());
+  Future<String> addExerciseLog({
+    required LibraryExercise exercise,
+    DateTime? loggedAt,
+    int? sets,
+    int? reps,
+    double? weight,
+    double? distance,
+    double? durationMinutes,
+  }) async {
+    final effectiveDate = loggedAt ?? DateTime.now();
+
+    final docRef = await _logsRef.add({
+      'libraryExerciseId': exercise.id,
+      'exerciseName': exercise.name,
+      'category': exercise.category,
+      'primaryMuscles': exercise.primaryMuscles,
+      'loggedAt': Timestamp.fromDate(effectiveDate),
+      'sets': sets,
+      'reps': reps,
+      'weight': weight,
+      'distance': distance,
+      'durationMinutes': durationMinutes,
+    });
+
     return docRef.id;
   }
 
