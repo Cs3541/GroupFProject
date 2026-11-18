@@ -434,15 +434,24 @@ void initState() {
                                 title: Text(exercise.name),
                                 subtitle: Text('Sets: ${exercise.sets}, Weight: ${exercise.weight ?? 'N/A'}'),
                                 onTap: () => _OpenExerciseDetails(exercise.libraryExerciseId),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () {
-                                    _showEditExerciseDialog(workout.id!, exerciseIndex, exercise.name, exercise.sets, exercise.weight);
-                                    
-                                    if (!mounted) return;
-                                    setState(() {});
-                                  },
-                                ),
+                                // Changed this button so that it adds a set if the routine is active, and functions as it did before if the routine is not active.
+                                trailing: presenter.isRoutineActive(workout.id!)
+                                    ? IconButton(
+                                        icon: const Icon(Icons.add_circle_outline),
+                                        tooltip: 'Add set',
+                                        onPressed: () => setState(() =>
+                                            presenter.addSet(workout.id!, exerciseIndex)),
+                                      )
+                                    : IconButton(
+                                        icon: const Icon(Icons.edit),
+                                        tooltip: 'Edit exercise',
+                                        onPressed: () {
+                                          _showEditExerciseDialog(workout.id!, exerciseIndex, exercise.name, exercise.sets, exercise.weight);
+
+                                          if (!mounted) return;
+                                          setState(() {});
+                                        },
+                                      ),
                               ),
                               ...List.generate(exercise.sets, (setIndex) {
                                 final isActive = presenter.isRoutineActive(workout.id!);
@@ -453,23 +462,26 @@ void initState() {
                                       Text('Set ${setIndex + 1}'),
                                       const SizedBox(width: 12),
                                       SizedBox(
-                                        width: 60,
+                                        width: 50, //ran into overflow error with new button so had to shrink
                                         child: TextFormField(
                                           // key includes isActive so the boxes reset to empty after Finish
-                                          key: ValueKey('reps-${workout.id}-$exerciseIndex-$setIndex-$isActive'),
+                                          key: ValueKey('reps-${workout.id}-$exerciseIndex-$setIndex-$isActive-${exercise.sets}'),
                                           initialValue: exercise.setReps[setIndex]?.toString() ?? '',
                                           enabled: isActive,
                                           keyboardType: TextInputType.number,
                                           decoration: const InputDecoration(labelText: 'Reps', isDense: true),
-                                          onChanged: (value) => presenter.updateSetReps(
-                                              workout.id!, exerciseIndex, setIndex, int.tryParse(value)),
+                                          onChanged: (value) { 
+                                            presenter.updateSetReps(
+                                              workout.id!, exerciseIndex, setIndex, int.tryParse(value));
+                                              setState(() {}); 
+                                          }
                                         ),
                                       ),
                                       const SizedBox(width: 8),
                                       SizedBox(
-                                        width: 90,
+                                        width: 75, //ran into overflow error with new button so had to shrink
                                         child: TextFormField(
-                                          key: ValueKey('weight-${workout.id}-$exerciseIndex-$setIndex-$isActive'),
+                                          key: ValueKey('weight-${workout.id}-$exerciseIndex-$setIndex-$isActive-${exercise.sets}'),
                                           initialValue: exercise.setWeights[setIndex]?.toString() ?? '',
                                           enabled: isActive,
                                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -479,14 +491,30 @@ void initState() {
                                             suffixText: presenter.weightUnit,
                                             isDense: true,
                                           ),
-                                          onChanged: (value) => presenter.updateSetWeight(
-                                              workout.id!, exerciseIndex, setIndex, double.tryParse(value)),
+                                            //Refactored so that typing causes a screen redraw, 
+                                            //enabling the finish workout button if typing is the last step to completing a routine.
+                                            //Typing previously did not casue a screen redraw, so the finish button would not enable until a checkbox was clicked.
+                                            onChanged: (value) {
+                                              presenter.updateSetWeight(
+                                                workout.id!, exerciseIndex, setIndex, double.tryParse(value));
+                                            setState(() {});
+                                          },
+
                                         ),
                                       ),
                                     ],
                                   ),
 
                                   value: exercise.completedSets[setIndex],
+                                   //adding button to remove sets from an ACTIVE routine.
+                                   secondary: isActive
+                                      ? IconButton(
+                                          icon: const Icon(Icons.remove_circle_outline),
+                                          tooltip: 'Remove set',
+                                          onPressed: () => setState(() =>
+                                              presenter.removeSet(workout.id!, exerciseIndex, setIndex)),
+                                        )
+                                      : null,
                                   //changing onChanged here so that you can only mark off sets when a routine is active.
                                   onChanged: presenter.isRoutineActive(workout.id!) 
                                   ? (value) async {
@@ -504,29 +532,45 @@ void initState() {
                         if (workout.exercises.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: presenter.isRoutineActive(workout.id!)
-                                ? ElevatedButton.icon(
-                                  icon: const Icon(Icons.check),
-                                  label: const Text('Finish Routine'),
-                                  onPressed: () async {
-                                    final saved = await presenter.finishRoutine();
-                                    if (!context.mounted) return;
-                                    setState(() {});
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(saved
-                                            ? 'Workout Saved!'
-                                            : 'Could not save workout.')),
-                                    );
-                                  },
-                                )
+                            child: presenter.isRoutineActive(workout.id!) 
+                                  //Rewrote the button function to be disabled if the routine is not complete.
+                                  ? Column(
+                                    children: [
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.check),
+                                        label: const Text('Finish Routine'),
+                                        // null disables the button
+                                        onPressed: !presenter.isRoutineReady(workout.id!)
+                                            ? null
+                                            : () async {
+                                                final saved = await presenter.finishRoutine();
+                                                if (!context.mounted) return;
+                                                setState(() {});
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(saved
+                                                        ? 'Workout Saved!'
+                                                        : 'Could not save workout.')),
+                                                );
+                                              },
+                                      ),
+                                      if (!presenter.isRoutineReady(workout.id!))
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4.0),
+                                          child: Text(
+                                            '${presenter.incompleteSetCount(workout.id!)} set(s) still need reps, '
+                                            'weight and a check, or remove them.',
+                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                        ),
+                                    ],
+                                  )
                               : ElevatedButton.icon(
                                 icon: const Icon(Icons.play_arrow),
                                 label: const Text('Start Routine'),
                                 onPressed: () => setState(() => presenter.startRoutine(workout.id!)),
                                 ),
-                          ),
-                                
+                          ),       
                       ],
                   ),
                 );

@@ -12,6 +12,7 @@ class WorkoutPresenter {
   String? _activeRoutineId; //keeps track of which routine is active
   DateTime? _routineStartedAt; //timestamp start of routine
   String weightUnit = 'kg'; // fetches user's preferred weight unit; metric/kg by default
+  List<int> _originalSetCounts = []; //keeps track of original set counts for exercises in an active routine
 
   bool isRoutineActive(String workoutId) => _activeRoutineId == workoutId;
   // ---------------- exercise timer state ----------------
@@ -244,10 +245,64 @@ Future<void> updateLikes(String workoutId) async {
     if (exercise == null) return;
     exercise.setWeights[setIndex] = weight;
   }
+  // Adds an empty set to the end of an exercise for this run of an active routine.
+  // Works if all sets had previously been deleted.
+  void addSet(String workoutId, int exerciseIndex) {
+    final workout = _findWorkout(workoutId);
+    if (workout == null || exerciseIndex < 0 || exerciseIndex >= workout.exercises.length) return;
+    final exercise = workout.exercises[exerciseIndex];
+
+    // Copies into resizable lists so we can add a new set
+    exercise.completedSets = [...exercise.completedSets, false];
+    exercise.setReps = [...exercise.setReps, null];
+    exercise.setWeights = [...exercise.setWeights, null];
+    exercise.sets += 1;
+    exercise.isCompleted = false; // the new set isn't done yet
+  }
+
+
+  // Removes one set for this iteration of an active routine. On 'finishRoutine', the original set count is restored.
+  void removeSet(String workoutId, int exerciseIndex, int setIndex) {
+    final exercise = _findWorkout(workoutId)?.exercises[exerciseIndex];
+    if (exercise == null || setIndex < 0 || setIndex >= exercise.sets) return;
+
+    // Copies the set list into a resizable list so deletion is an option
+    exercise.completedSets = [...exercise.completedSets]..removeAt(setIndex);
+    exercise.setReps = [...exercise.setReps]..removeAt(setIndex);
+    exercise.setWeights = [...exercise.setWeights]..removeAt(setIndex);
+    exercise.sets -= 1;
+    exercise.isCompleted = exercise.sets > 0 && exercise.completedSets.every((done) => done);
+  }
+
+  // Checks for incomplete sets in an active workout.
+  int incompleteSetCount(String workoutId) {
+    final workout = _findWorkout(workoutId);
+    if (workout == null) return 0;
+
+    var missing = 0;
+    for (final exercise in workout.exercises) {
+      for (var i = 0; i < exercise.sets; i++) {
+        final done = exercise.completedSets[i] &&
+            (exercise.setReps[i] ?? 0) > 0 &&
+            exercise.setWeights[i] != null; // 0 allowed for bodyweight exercises
+        if (!done) missing++;
+      }
+    }
+    return missing;
+  }
+
+  // Allows user to finish a routine only if all sets have been completed with reps and weights and there is at least one set present.
+  bool isRoutineReady(String workoutId) {
+    final workout = _findWorkout(workoutId);
+    if (workout == null) return false;
+    final hasSets = workout.exercises.any((exercise) => exercise.sets > 0);
+    return hasSets && incompleteSetCount(workoutId) == 0;
+  }
 
   void startRoutine(String workoutId) {
     _activeRoutineId = workoutId;
     _routineStartedAt = DateTime.now();
+    _originalSetCounts = _findWorkout(workoutId)?.exercises.map((e) => e.sets).toList() ?? [];
   }
 
   //Saves routine data to completed routines collection and resets active routine
@@ -255,13 +310,15 @@ Future<void> updateLikes(String workoutId) async {
     final workout = _findWorkout(_activeRoutineId);
     final startedAt = _routineStartedAt;
     if (workout == null || startedAt == null) return false;
+    if (!isRoutineReady(workout.id!)) return false; //safety check
 
     final savedId = await Workout.saveCompletedWorkout(workout, startedAt, weightUnit);
     if (savedId == null) return false;
-
-    for (final exercise in workout.exercises) {
-      exercise.resetSets();
+    // Reset the exercises to their original set counts if changed during an active routine.
+    for (var i = 0; i < workout.exercises.length; i++) {
+      workout.exercises[i].resetSets(i < _originalSetCounts.length ? _originalSetCounts[i] : null);
     }
+
     await Workout.updateExerciseStatus(workout.id!, workout.exercises);
 
     if (workout.isCompleted) {
