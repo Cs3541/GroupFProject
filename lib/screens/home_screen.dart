@@ -1,7 +1,7 @@
 //dont worry this will be added
 import 'package:flutter/material.dart';
 
-import '../widgets/calendar_strip.dart';
+import '../widgets/calendar_strip_widget.dart';
 import '../presenters/calendar_presenter.dart';
 import '../widgets/main_widget.dart';
 
