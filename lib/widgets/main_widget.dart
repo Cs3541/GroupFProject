@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-//these will be added soon
 import '../widgets/main_widget_sub_widgets/first_page.dart';
 import '../widgets/main_widget_sub_widgets/goals_progress_page.dart';
 import '../widgets/main_widget_sub_widgets/temporary_last_page.dart';
@@ -31,7 +30,6 @@ class MainWidgetList extends StatelessWidget {
   Widget build(BuildContext context){
     final tabs = _buildTabs();
     final color = Theme.of(context).colorScheme.primary;
-
     return DefaultTabController(
       length : tabs.length,
       child : Column(
@@ -39,7 +37,7 @@ class MainWidgetList extends StatelessWidget {
         children : [
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(16),
             ),
             child: AspectRatio(
@@ -51,7 +49,7 @@ class MainWidgetList extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondary,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(16),
             ),
             child: TabBar(
