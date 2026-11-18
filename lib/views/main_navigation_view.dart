@@ -41,7 +41,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override 
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _getScreen(_selectedTab),
+      //IndexedStack allows for switching between screen without losing screen states. (Active routines aren't lost if you switch to a different screen.)
+      body: IndexedStack(
+        index: _selectedTab.index,
+        children: NavTab.values.map(_getScreen).toList(),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedTab.index,
         onTap: _onItemTapped,

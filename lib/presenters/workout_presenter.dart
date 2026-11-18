@@ -298,6 +298,26 @@ Future<void> updateLikes(String workoutId) async {
     final hasSets = workout.exercises.any((exercise) => exercise.sets > 0);
     return hasSets && incompleteSetCount(workoutId) == 0;
   }
+  // The routine currently in progress
+  Workout? get activeRoutine => _findWorkout(_activeRoutineId);
+
+  // Allows user to cancel out of active routine, clears logged sets and restores the original set counts.
+  Future<void> cancelRoutine() async {
+    final workout = _findWorkout(_activeRoutineId);
+    if (workout != null) {
+      for (var i = 0; i < workout.exercises.length; i++) {
+        workout.exercises[i].resetSets(i < _originalSetCounts.length ? _originalSetCounts[i] : null);
+      }
+      await Workout.updateExerciseStatus(workout.id!, workout.exercises);
+
+      if (workout.isCompleted) {
+        await Workout.updateCompletionStatus(workout.id!, true);
+        workout.isCompleted = false;
+      }
+    }
+    _activeRoutineId = null;
+    _routineStartedAt = null;
+  }
 
   void startRoutine(String workoutId) {
     _activeRoutineId = workoutId;
