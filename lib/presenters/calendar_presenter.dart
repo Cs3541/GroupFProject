@@ -63,6 +63,10 @@ class CalendarPresenter {
     if (isSameDay(_selectedDay, tomorrow)) return 'Tomorrow';
     return '${_weekdays[_selectedDay.weekday - 1]}, ${_monthDay(_selectedDay)}';
   }
+    String get selectedDayShortLabel {
+    if (isSameDay(_selectedDay, _today)) return 'Today';
+    return  '${_monthDay(_selectedDay)}';
+  }
 
   static String weekdayLetter(DateTime day) => _weekdays[day.weekday - 1][0];
 
