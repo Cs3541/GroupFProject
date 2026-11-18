@@ -1,8 +1,9 @@
 //dont worry this will be added
 import 'package:flutter/material.dart';
+
 import '../widgets/calendar_strip.dart';
 import '../presenters/calendar_presenter.dart';
-
+import '../widgets/main_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,7 +12,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>{
+class _HomeScreenState extends State<HomeScreen> {
   final CalendarPresenter _calendarPresenter = CalendarPresenter();
 
   @override
@@ -26,6 +27,11 @@ class _HomeScreenState extends State<HomeScreen>{
               presenter: _calendarPresenter,
               onDaySelected: (_) => setState(() {}),
             ),
+            const SizedBox(height: 16),
+            MainWidgetList(
+              selectedDayLabel: _calendarPresenter.selectedDayShortLabel,
+              aspectRatio: 1.6,
+            ),
             const SizedBox(height: 24),
             //Temp text box that reflects the return dateGiven from presenter
             Text(
@@ -38,6 +44,3 @@ class _HomeScreenState extends State<HomeScreen>{
     );
   }
 }
-
-
-
