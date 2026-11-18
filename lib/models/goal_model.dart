@@ -84,7 +84,7 @@ abstract class GoalsRepository {
 class FirestoreGoalsRepository implements GoalsRepository {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
-  final FirestoreExerciseLogRepository _logRepo;
+  final ExerciseLogRepository _logRepo;
 
   FirestoreGoalsRepository(this._logRepo);
 
