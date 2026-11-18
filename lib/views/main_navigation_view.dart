@@ -48,7 +48,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _getScreen(_selectedTab),
+      body: IndexedStack(
+        index: _selectedTab.index,
+        children: NavTab.values.map(_getScreen).toList(),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openExerciseLog,
         shape: const CircleBorder(),
