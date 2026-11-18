@@ -123,9 +123,8 @@ void initState() {
 
                 if (exerciseIndex >= 0 && exerciseIndex < workout.exercises.length) {
                   final exercise = workout.exercises[exerciseIndex];
-                  exercise.sets = updatedSets;
+                  exercise.resetSets(updatedSets); // Reset completedSets when sets change
                   exercise.weight = updatedWeight;
-                  exercise.completedSets = List.filled(updatedSets, false);
                 }
 
                 if (!mounted) return;
@@ -259,6 +258,7 @@ void initState() {
                         if (value == null) return;
                         setDialogState(() {
                           exercise.sets = value;
+                          exercise.resetSets(value); // Reset completedSets when sets change
                           exercise.completedSets = List.filled(value, false);
                         });
                       },
@@ -445,8 +445,47 @@ void initState() {
                                 ),
                               ),
                               ...List.generate(exercise.sets, (setIndex) {
+                                final isActive = presenter.isRoutineActive(workout.id!);
                                 return CheckboxListTile(
-                                  title: Text('Set ${setIndex + 1}'),
+                                  // Display the set number and input fields for reps and weight
+                                  title: Row(
+                                    children: [
+                                      Text('Set ${setIndex + 1}'),
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        width: 60,
+                                        child: TextFormField(
+                                          // key includes isActive so the boxes reset to empty after Finish
+                                          key: ValueKey('reps-${workout.id}-$exerciseIndex-$setIndex-$isActive'),
+                                          initialValue: exercise.setReps[setIndex]?.toString() ?? '',
+                                          enabled: isActive,
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(labelText: 'Reps', isDense: true),
+                                          onChanged: (value) => presenter.updateSetReps(
+                                              workout.id!, exerciseIndex, setIndex, int.tryParse(value)),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      SizedBox(
+                                        width: 90,
+                                        child: TextFormField(
+                                          key: ValueKey('weight-${workout.id}-$exerciseIndex-$setIndex-$isActive'),
+                                          initialValue: exercise.setWeights[setIndex]?.toString() ?? '',
+                                          enabled: isActive,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          decoration: InputDecoration(
+                                            labelText: 'Weight',
+                                            hintText: exercise.weight?.toString(),
+                                            suffixText: presenter.weightUnit,
+                                            isDense: true,
+                                          ),
+                                          onChanged: (value) => presenter.updateSetWeight(
+                                              workout.id!, exerciseIndex, setIndex, double.tryParse(value)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
                                   value: exercise.completedSets[setIndex],
                                   //changing onChanged here so that you can only mark off sets when a routine is active.
                                   onChanged: presenter.isRoutineActive(workout.id!) 

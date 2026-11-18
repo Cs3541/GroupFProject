@@ -9,9 +9,9 @@ class WorkoutPresenter {
   final Set<String> _likedWorkouts = {};
   List<LibraryExercise> _libraryExercises = [];
   final Map<String, Exercise> _selectedExercises = {};
-  //keeps track of which routine is active and timestamp
-  String? _activeRoutineId;
-  DateTime? _routineStartedAt;
+  String? _activeRoutineId; //keeps track of which routine is active
+  DateTime? _routineStartedAt; //timestamp start of routine
+  String weightUnit = 'kg'; // fetches user's preferred weight unit; metric/kg by default
 
   bool isRoutineActive(String workoutId) => _activeRoutineId == workoutId;
   // ---------------- exercise timer state ----------------
@@ -71,7 +71,7 @@ class WorkoutPresenter {
 
   Future<void> loadWorkoutRoutines() async {
     final fetched = await Workout.fetchWorkout();
-
+    weightUnit = await Workout.fetchWeightUnit(); 
 
     _workouts
       ..clear()
@@ -114,8 +114,7 @@ class WorkoutPresenter {
     final exercise = _selectedExercises[id];
 
     if (exercise == null) return;
-    exercise.sets = sets;
-    exercise.completedSets = List.filled(sets, false);
+    exercise.resetSets(sets);
   }
 
   void updateSelectedExerciseWeight(String id, int? weight) {
@@ -134,9 +133,8 @@ class WorkoutPresenter {
 
     final exercise = workout.exercises[exerciseIndex];
 
-    exercise.sets = sets;
+    exercise.resetSets(sets);
     exercise.weight = weight;
-    exercise.completedSets = List.filled(sets, false);
 
     await Workout.updateExerciseStatus(workoutId, workout.exercises);
 
@@ -235,6 +233,18 @@ Future<void> updateLikes(String workoutId) async {
     }
   }
   //Routine start/finish
+  void updateSetReps(String workoutId, int exerciseIndex, int setIndex, int? reps) {
+    final exercise = _findWorkout(workoutId)?.exercises[exerciseIndex];
+    if (exercise == null) return;
+    exercise.setReps[setIndex] = reps;
+  }
+
+  void updateSetWeight(String workoutId, int exerciseIndex, int setIndex, double? weight) {
+    final exercise = _findWorkout(workoutId)?.exercises[exerciseIndex];
+    if (exercise == null) return;
+    exercise.setWeights[setIndex] = weight;
+  }
+
   void startRoutine(String workoutId) {
     _activeRoutineId = workoutId;
     _routineStartedAt = DateTime.now();
@@ -246,12 +256,11 @@ Future<void> updateLikes(String workoutId) async {
     final startedAt = _routineStartedAt;
     if (workout == null || startedAt == null) return false;
 
-    final savedId = await Workout.saveCompletedWorkout(workout, startedAt);
+    final savedId = await Workout.saveCompletedWorkout(workout, startedAt, weightUnit);
     if (savedId == null) return false;
 
     for (final exercise in workout.exercises) {
-      exercise.completedSets = List.filled(exercise.sets, false);
-      exercise.isCompleted = false;
+      exercise.resetSets();
     }
     await Workout.updateExerciseStatus(workout.id!, workout.exercises);
 
