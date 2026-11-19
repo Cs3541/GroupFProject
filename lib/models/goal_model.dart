@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'exercise_log_model.dart';
+
 // #########################
 // -------- Models ---------
 // #########################
@@ -9,29 +11,29 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 // Goal model contract
 abstract class Goal {
-  String get id;
-  String get title;
+  final String id;
+  final String title;
+
+  Goal({required this.id, required this.title});
+
   bool get isCompleted;
 }
 
 // Concrete Metric goal implementation
 // e.g. run 10 miles, benchpress 200 pounds
-class MetricGoal implements Goal {
-  @override
-  final String id;
-  @override
-  final String title;
-
+class MetricGoal extends Goal {
+  final String libraryExerciseId;
   final double targetValue;
   final double currentValue;
   final String unit;
 
   MetricGoal({
-    required this.id,
-    required this.title,
+    required super.id,
+    required this.libraryExerciseId,
+    required super.title,
     required this.targetValue,
-    required this.currentValue,
-    this.unit = '',
+    this.currentValue = 0.0,
+    required this.unit,
   });
 
   @override
@@ -40,15 +42,19 @@ class MetricGoal implements Goal {
 
 // Concrete Habit goal implementation
 // e.g. Run once a week, Walk 10,000 steps a day
-class HabitGoal implements Goal {
-  @override
-  final String id;
-  @override
-  final String title;
+class HabitGoal extends Goal {
   @override
   final bool isCompleted;
+  final String frequency;
+  final DateTime? lastCompletedDate;
 
-  HabitGoal({required this.id, required this.title, this.isCompleted = false});
+  HabitGoal({
+    required super.id,
+    required super.title,
+    this.isCompleted = false,
+    required this.frequency,
+    required this.lastCompletedDate,
+  });
 }
 
 // #####################################
@@ -61,18 +67,26 @@ abstract class GoalsRepository {
   Future<List<HabitGoal>> fetchHabitGoals();
   Future<void> updateHabitStatus(String id, bool isCompleted);
 
-  Future<String> addMetricGoal(String title, double targetMiles, String unit);
-  Future<String> addHabitGoal(String title);
+  Future<String> addMetricGoal(
+    String libraryExerciseId,
+    String title,
+    double targetValue,
+    String unit,
+  );
+  Future<String> addHabitGoal(String title, String frequency);
 
   Future<void> deleteMetricGoal(String id);
   Future<void> deleteHabitGoal(String id);
 }
 
-// Concrete Firebase repository
+// --- Concrete Firebase repository ---
 // Handles ALL database logic to add / remove / update / fetch goals to the firestore database.
 class FirestoreGoalsRepository implements GoalsRepository {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
+  final ExerciseLogRepository _logRepo;
+
+  FirestoreGoalsRepository(this._logRepo);
 
   String get _userId {
     // return 'debug_test_user_123';
@@ -87,23 +101,65 @@ class FirestoreGoalsRepository implements GoalsRepository {
 
   @override
   Future<List<MetricGoal>> fetchMetricGoals() async {
-    // 1. Fetch the user's target goals
     final snapshot = await _goalsRef.where('type', isEqualTo: 'metric').get();
 
-    // 2. Aggregate actual distance from the workouts collection
-    // TODO: write a query here that sums up the miles from the past 7 days
-    // double recentMilesRan = await _calculateWeeklyMilesFromWorkouts();
+    final recentLogs = await _logRepo.getLogsSince(
+      DateTime.now().subtract(const Duration(days: 7)),
+    );
 
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
+      final libraryExerciseId = data['libraryExerciseId'] as String? ?? '';
+      final unit = data['unit'] as String? ?? 'lbs';
+
       return MetricGoal(
         id: doc.id,
-        title: data['title'] ?? '',
-        targetValue: (data['targetMiles'] as num?)?.toDouble() ?? 0.0,
-        currentValue:
-            0.0, // TODO: Replace with aggregated workout data calculation
+        libraryExerciseId: libraryExerciseId,
+        title: data['title'] as String? ?? '',
+        targetValue: (data['targetValue'] as num?)?.toDouble() ?? 0.0,
+        currentValue: _calculateWeeklyProgress(
+          libraryExerciseId,
+          unit,
+          recentLogs,
+        ),
+        unit: unit,
       );
     }).toList();
+  }
+
+  double _calculateWeeklyProgress(
+    String libraryExerciseId,
+    String unit,
+    List<ExerciseLog> recentLogs,
+  ) {
+    final matching = recentLogs.where(
+      (log) => log.libraryExerciseId == libraryExerciseId,
+    );
+
+    final normalizedUnit = unit.trim().toLowerCase();
+    double total = 0.0;
+
+    for (final log in matching) {
+      if (normalizedUnit == 'reps' || normalizedUnit == 'rep') {
+        total += (log.reps ?? 0) * (log.sets ?? 1);
+      } else if (normalizedUnit == 'sets' || normalizedUnit == 'set') {
+        total += (log.sets ?? 0);
+      } else if (normalizedUnit == 'miles' ||
+          normalizedUnit == 'km' ||
+          normalizedUnit == 'distance') {
+        total += (log.distance ?? 0.0);
+      } else if (normalizedUnit == 'mins' ||
+          normalizedUnit == 'minutes' ||
+          normalizedUnit == 'min') {
+        total += (log.durationMinutes ?? 0.0);
+      } else {
+        // Weight / volume units (lbs, kg): total volume = sets * reps * weight
+        final sets = log.sets ?? 1;
+        final reps = log.reps ?? 1;
+        total += (log.weight ?? 0.0) * sets * reps;
+      }
+    }
+    return total;
   }
 
   @override
@@ -112,29 +168,65 @@ class FirestoreGoalsRepository implements GoalsRepository {
 
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
+
+      DateTime? lastCompletedDate = (data['lastCompletedDate'] as Timestamp?)
+          ?.toDate();
+      String frequency = data['frequency'] as String? ?? 'daily';
+      bool isCompleted = data['isCompleted'] ?? false;
+
+      if (isCompleted && lastCompletedDate != null) {
+        final now = DateTime.now();
+        final startOfToday = DateTime(now.year, now.month, now.day);
+        final startOfWeek = DateTime(
+          now.year,
+          now.month,
+          now.day - (now.weekday - 1),
+        );
+
+        final bool isExpired =
+            (frequency == 'daily' &&
+                lastCompletedDate.isBefore(startOfToday)) ||
+            (frequency == 'weekly' && lastCompletedDate.isBefore(startOfWeek));
+
+        if (isExpired) {
+          isCompleted = false;
+          lastCompletedDate = null;
+          doc.reference.update({
+            'isCompleted': false,
+            'lastCompletedDate': null,
+          });
+        }
+      }
       return HabitGoal(
         id: doc.id,
         title: data['title'] ?? '',
-        isCompleted: data['isCompleted'] ?? false,
+        lastCompletedDate: lastCompletedDate,
+        frequency: frequency,
+        isCompleted: isCompleted,
       );
     }).toList();
   }
 
   @override
   Future<void> updateHabitStatus(String id, bool isCompleted) async {
-    await _goalsRef.doc(id).update({'isCompleted': isCompleted});
+    await _goalsRef.doc(id).update({
+      'isCompleted': isCompleted,
+      'lastCompletedDate': isCompleted ? FieldValue.serverTimestamp() : null,
+    });
   }
 
   @override
   Future<String> addMetricGoal(
+    String libraryExerciseId,
     String title,
-    double targetMiles,
+    double targetValue,
     String unit,
   ) async {
     final docRef = await _goalsRef.add({
+      'libraryExerciseId': libraryExerciseId,
       'type': 'metric',
       'title': title,
-      'targetMiles': targetMiles,
+      'targetValue': targetValue,
       'unit': unit,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -142,11 +234,13 @@ class FirestoreGoalsRepository implements GoalsRepository {
   }
 
   @override
-  Future<String> addHabitGoal(String title) async {
+  Future<String> addHabitGoal(String title, String frequency) async {
     final docRef = await _goalsRef.add({
       'type': 'habit',
       'title': title,
       'isCompleted': false,
+      'frequency': frequency,
+      'lastCompletedDate': null,
       'createdAt': FieldValue.serverTimestamp(),
     });
     return docRef.id;
@@ -180,15 +274,19 @@ class MockGoalsRepository implements GoalsRepository {
     return [
       MetricGoal(
         id: 'm1',
-        title: 'Run 15 miles per week',
-        targetValue: 15.0,
-        currentValue: 8.5,
+        libraryExerciseId: 'Barbell_Bench_Press_-_Medium_Grip',
+        title: 'Barbell Bench Press - Medium Grip',
+        targetValue: 5000.0,
+        currentValue: 2750.0,
+        unit: 'lbs',
       ),
       MetricGoal(
         id: 'm2',
-        title: 'Cycle 50 miles per week',
-        targetValue: 50.0,
-        currentValue: 50.0,
+        libraryExerciseId: '3_4_Sit-Up',
+        title: '3/4 Sit-Up',
+        targetValue: 100.0,
+        currentValue: 100.0,
+        unit: 'reps',
       ),
     ];
   }
@@ -201,11 +299,15 @@ class MockGoalsRepository implements GoalsRepository {
         id: 'h1',
         title: 'Did I work out 3 times this week?',
         isCompleted: true,
+        frequency: 'weekly',
+        lastCompletedDate: DateTime.now(),
       ),
       HabitGoal(
         id: 'h2',
         title: 'Stretch for 10 minutes daily',
         isCompleted: false,
+        frequency: 'daily',
+        lastCompletedDate: null,
       ),
     ];
   }
@@ -213,24 +315,21 @@ class MockGoalsRepository implements GoalsRepository {
   @override
   Future<void> updateHabitStatus(String id, bool isCompleted) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    // In a mock, you just return success. The Presenter handles the local state update.
   }
 
   @override
   Future<String> addMetricGoal(
+    String libraryExerciseId,
     String title,
-    double targetMiles,
+    double targetValue,
     String unit,
   ) async {
-    await Future.delayed(
-      const Duration(milliseconds: 500),
-    ); // Simulate network delay
-    // Generate a fake unique ID
+    await Future.delayed(const Duration(milliseconds: 500));
     return 'mock_metric_${DateTime.now().millisecondsSinceEpoch}';
   }
 
   @override
-  Future<String> addHabitGoal(String title) async {
+  Future<String> addHabitGoal(String title, String frequency) async {
     await Future.delayed(const Duration(milliseconds: 500));
     return 'mock_habit_${DateTime.now().millisecondsSinceEpoch}';
   }
